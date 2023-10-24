@@ -41,7 +41,32 @@ files = [
     {file = "numpy-1.26.1.tar.gz", hash = "sha256:c8c6c72d4a9f831f328efb1312642a1cafafaa88981d9ab76368d50d07d93cbe"},
 ]
 
+[[package]]
+name = "poetry-version"
+version = "0.2.0"
+description = "Python library for extracting version from poetry pyproject.toml file (deprecated)"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+files = [
+    {file = "poetry-version-0.2.0.tar.gz", hash = "sha256:1b77715b8935589be7977580ecbe454519d1c206d6f99f0d66d4832fa7ac867f"},
+    {file = "poetry_version-0.2.0-py2.py3-none-any.whl", hash = "sha256:82445fe406699d84d7b5011d153bf97f2da04f94006e091dbaf302489e01b5b0"},
+]
+
+[package.dependencies]
+tomlkit = ">=0.4.6,<0.6.0"
+
+[[package]]
+name = "tomlkit"
+version = "0.5.11"
+description = "Style preserving TOML library"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+files = [
+    {file = "tomlkit-0.5.11-py2.py3-none-any.whl", hash = "sha256:4e1bd6c9197d984528f9ff0cc9db667c317d8881288db50db20eeeb0f6b0380b"},
+    {file = "tomlkit-0.5.11.tar.gz", hash = "sha256:f044eda25647882e5ef22b43a1688fb6ab12af2fc50e8456cdfc751c873101cf"},
+]
+
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "780f3c132500e6b92d01a6fc93dced8b97511706d430dcc3219da115acddf93a"
+content-hash = "025f8206199f3240c3cdf9d9f8b4d3dc7608642c99b0be8ffd81ae256aa65393"
