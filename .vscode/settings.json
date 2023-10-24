@@ -6,4 +6,9 @@
         "editor.defaultFormatter": "ms-python.autopep8",
         "editor.formatOnType": true
     },
+    "python.testing.pytestArgs": [
+        "elsim"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
 }
