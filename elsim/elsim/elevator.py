@@ -3,13 +3,16 @@ from dataclasses import dataclass
 from random import Random
 from math import sqrt
 from copy import deepcopy
-from elsim.parameters import INFTY, DOOR_OPENING_TIME
 
+from elsim.parameters import INFTY, DOOR_OPENING_TIME
 
 class Elevator:
     """Class for keeping track of an elevator."""
     @dataclass
     class Trajectory:
+        """ A single step of a trajectory consisting of important information, for the state of an elevator. Needed so one can extrapolate more easily between pairs of trajectories steps. 
+        Used for calculating the complete trajectories and how to move along it.
+        """
         position: float
         speed: float
         time: float
@@ -57,7 +60,16 @@ class Elevator:
 
 
     def set_target_position(self, new_target_position : int):
-        
+        """ Set the next target position. Can be done while the elevator is moving (i.e., following a trajectorie). 
+        Is not going to affect anything if the doors are currently opening as the doors will continue with their plan 
+        and will ask for a new target if the doors are fully openend.
+
+        Args:
+            new_target_position (int): The floor number.
+
+        Raises:
+            Exception: If floor number is not valid.
+        """
         if(self.num_floors <= new_target_position or new_target_position < 0):
             raise Exception(f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}")
 
@@ -78,6 +90,8 @@ class Elevator:
         return 1 > self.door_opened_percentage > 0 and not self.door_is_opening
 
     def update_trajectory(self):
+        """ Updates the trajectory if a new target has been set.
+        """
         # Compute trajectory (lots of maths) :@
         self.trajectory_list = self.trajectory_list[0:1]
         
@@ -173,6 +187,10 @@ class Elevator:
             float: time in seconds
 
         """
+        # if at target position: time to target is infty as this elevator. Makes sense as we only care about
+        # elevators that are not yet at their target
+        if(len(self.trajectory_list) == 1):
+            return INFTY
         self._time_target = sum([trajectory_step.time for trajectory_step in self.trajectory_list])
         return self._time_target
 
@@ -182,6 +200,10 @@ class Elevator:
         Args:
             time_step (float): the time to advance the simulation in seconds.
         """
+        # if only one element in trajectory list => elevator at target position. Do not move
+        if(len(self.trajectory_list) == 1):
+            return
+
         # Test Edge Case: Door is opening, meaning only have to either fully open the door or partially further open door
         if(self.door_is_opening):
             
@@ -202,10 +224,16 @@ class Elevator:
 
         # find first step of trajectory with cummulated simulation time more than time_step
         i = 0
-        while(time_step - self.trajectory_list[i+1].time >= 0):
+        while(i + 1 < len(self.trajectory_list) and time_step - self.trajectory_list[i+1].time >= 0):
             time_step -= self.trajectory_list[i+1].time
             i += 1
         
+        # elevator is moved to end of its trajectory, set position to target and open the door 
+        # (as every end of a trajectory will result in open doors)
+        if(i + 1 == len(self.trajectory_list)):
+            self.trajectory_list = [self.trajectory_list[-1].copy().set_time(0)]
+            self.door_opened_percentage = 1
+            return
 
         # did the door close before starting to move?
         # maybe update trajectory with opening and closing property

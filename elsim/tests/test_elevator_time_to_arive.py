@@ -101,3 +101,11 @@ def test_overshot_speed():
                                               Elevator.Trajectory(4.0, 0.0, 1.224744871391589),
                                               Elevator.Trajectory(4.0, 0.0, DOOR_OPENING_TIME)]
     pass
+
+def test_arrived_elevator():
+    test_elevator = Elevator(4,10,2,1)
+    assert test_elevator.get_time_to_target() == INFTY
+    test_elevator.set_target_position(9)
+    t = test_elevator.get_time_to_target()
+    test_elevator.advance_simulation(t)
+    assert test_elevator.get_time_to_target() == INFTY

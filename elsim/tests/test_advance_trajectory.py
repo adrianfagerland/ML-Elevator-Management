@@ -65,6 +65,10 @@ def test_with_door_openings():
     test_elevator.advance_simulation(2)
     assert test_elevator.get_time_to_target() == t1 + DOOR_OPENING_TIME / 2
 
-
-
+def test_empty_trajectory():
+    test_elevator = Elevator(4,11,2,1)
+    test_elevator.advance_simulation(1000)
+    assert test_elevator.current_position == Elevator(4,11,2,1).current_position
+    assert test_elevator.current_speed == Elevator(4,11,2,1).current_speed
+    assert test_elevator.door_opened_percentage == Elevator(4,11,2,1).door_opened_percentage
 # TODO write more tests
