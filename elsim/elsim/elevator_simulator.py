@@ -6,6 +6,8 @@ from random import Random
 import csv
 from datetime import datetime
 
+from torch import floor
+
 from elsim.elevator import Elevator
 from elsim.parameters import INFTY, DOOR_OPENING_TIME, DATETIME_FORMAT_INPUT
 
@@ -49,8 +51,13 @@ class ElevatorSimulator:
         self.elevators = [Elevator(0, self.num_floors, self.max_speed, self.max_acc) for _ in range(self.num_elevators)]
 
         # People positioning
-        self.floor_queue_list = [list() for _ in range(self.num_floors)]
+        self.floor_queue_list_up = [list() for _ in range(self.num_floors)]
+        self.floor_queue_list_down = [list() for _ in range(self.num_floors)]
+
+
         self.elevator_riding_list = [list() for _ in range(self.num_elevators)]
+        self.elevator_buttons_list = [[0 for _ in range(self.num_floors)] for _ in range(self.num_elevators)]
+
 
         # up and down buttons on each floor
         self.floor_buttons_pressed_up = [0 for _ in range(self.num_floors)]
@@ -84,29 +91,48 @@ class ElevatorSimulator:
             decision_algorithm : Callable):
         
         # read data in 
-        self.read_in_people_data("..\pxsim\elevator_data.csv")
+        self.read_in_people_data("..\\pxsim\\elevator_data.csv")
         
         # start clock for simulation
         world_time = 0
 
-        arrival_index = 0
+        next_elevator_windex = 0
 
         # while not running
         while(world_time < time_to_run):
             # get next event that needs to be handled by decision_algorithm 
             # => either an elevator arrives or a person arrives
 
-            next_arrival = self.arrivals[arrival_index][0]
+            next_arrival, floor_start, floor_end = self.arrivals[next_elevator_windex]
 
-            next_elevator_event = sorted([elevator.get_time_to_target() for elevator in self.elevators])[0]
+            next_elevator_index, next_elevator_time = sorted([(ind, elevator.get_time_to_target()) for ind,elevator in enumerate(self.elevators)], key=lambda x: x[1])[0]
 
 
-            if(next_arrival > world_time + next_elevator_event):
-                # person arrives
-
-                pass
+            if(next_arrival > world_time + next_elevator_time):
+                # person arrives. Add them to the right queues and update the buttons pressed
+                if(floor_end > floor_start):
+                    self.floor_queue_list_up[floor_start].append((next_arrival,floor_end))
+                    self.floor_buttons_pressed_up[floor_start] = 1
+                elif(floor_end < floor_start):
+                    self.floor_queue_list_down[floor_start].append((next_arrival,floor_end))
+                    self.floor_buttons_pressed_down[floor_start] = 1
+                else:
+                    raise Exception("Wrong person input: Target Floor and Start Floor are equal")
             else:
                 # elevator arrives
+                arrived_elevator = self.elevators[next_elevator_index]
+                arrived_floor = arrived_elevator.trajectory_list[0].position
+                # update floors buttons by disabling them 
+                if(arrived_elevator.continue_up):
+                    self.floor_buttons_pressed_up[0]
+
+                # 1. do people want to leave?
+                # 2. do people want to enter?
+                # -> can people enter? i.e. max capacity
+
+                # update outer buttons
+
+
 
                 pass
 

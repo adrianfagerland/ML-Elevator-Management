@@ -1,10 +1,13 @@
+from hmac import new
 from typing_extensions import Self
 from dataclasses import dataclass
 from random import Random
 from math import sqrt
 from copy import deepcopy
+from numpy import sign
 
-from elsim.parameters import INFTY, DOOR_OPENING_TIME
+
+from elsim.parameters import DOOR_STAYING_OPEN_TIME, INFTY, DOOR_OPENING_TIME
 
 class Elevator:
     """Class for keeping track of an elevator."""
@@ -16,10 +19,18 @@ class Elevator:
         position: float
         speed: float
         time: float
-        
+        doors_open: float = 0
+        # if doors_open_direction = 1  => opening 
+        # if doors_open_direction = 0  => not moving
+        # if doors_open_direction = -1 => closing
+        doors_open_direction: int = 0
+
         def copy(self) -> Self:
             return deepcopy(self)
         
+        def set_open(self, open_percentage: float) -> Self:
+            self.doors_open = open_percentage
+            return self
         def set_time(self, time: float) -> Self:
             self.time = time
             return self
@@ -29,10 +40,18 @@ class Elevator:
         def set_speed(self, speed: float) -> Self:
             self.speed = speed
             return self
-        def get_values(self) -> tuple[float, float, float]:
-            return (self.position, self.speed, self.time)
+        def set_doors_opening_direction(self, dir: int) -> Self:
+            self.doors_open_direction = dir
+            return self
+        def get_doors_opening_direction(self) -> int:
+            return self.doors_open_direction
+        def get_values(self) -> tuple[float, float, float, float]:
+            return (self.position, self.speed, self.time, self.doors_open)
+        def are_doors_opening(self) -> bool:
+            return self.doors_open_direction == 1
+
         def __repr__(self) -> str:
-            return str((self.position, self.speed, self.time))
+            return str((self.position, self.speed, self.time, self.doors_open, self.doors_open_direction))
 
     def __init__(self, 
                     current_position: float, 
@@ -41,19 +60,20 @@ class Elevator:
                     max_acceleration: float, 
                     num_passangers: int = 0,
                     current_speed: float = 0):
-        self.current_position = current_position
+        
         self.num_floors = num_floors
         self.max_speed = max_speed
-        self.current_speed = current_speed
         self.max_acceleration = max_acceleration
         self.num_passangers = num_passangers
-        self.target_position : int = int(self.current_position)
-        self.inner_buttons_pressed: list[bool] =  [False] * num_floors
+        self.target_position : int = int(current_position)
+
+        # After arriving on target floor, will the elevator continue up or down?
+        # This is set before arriving, but can be ignored by the next command. This information is 
+        # given to the people in queue on the floor, so they may decide whether this elevator is for them 
+        # (or maybe for another person going the other direction also waiting on the floor)
+        self.continue_up: bool = True
 
 
-        self.door_opened_percentage: float = 0
-        self.door_is_opening: bool = False
-        self.energy_consumption: float = 0
 
         self.trajectory_list = [self.Trajectory(current_position, current_speed, 0)]
         self._time_target : float = INFTY
@@ -82,12 +102,6 @@ class Elevator:
             self._time_target = sum([trajectory_step.time for trajectory_step in self.trajectory_list])
         else:
             self.update_trajectory()
-            
-    def are_doors_opening(self) -> bool:
-        return 1 > self.door_opened_percentage > 0 and self.door_is_opening
-
-    def are_doors_closing(self) -> bool:
-        return 1 > self.door_opened_percentage > 0 and not self.door_is_opening
 
     def update_trajectory(self):
         """ Updates the trajectory if a new target has been set.
@@ -96,9 +110,8 @@ class Elevator:
         self.trajectory_list = self.trajectory_list[0:1]
         
         # check if door needs to be handled, add time to close before starting to move
-
-        if(self.door_opened_percentage > 0):
-            trajetory_step = self.trajectory_list[0].copy().set_time(self.door_opened_percentage * DOOR_OPENING_TIME)
+        if(self.get_doors_open() > 0):
+            trajetory_step = self.trajectory_list[0].copy().set_open(0).set_doors_opening_direction(-1).set_time(self.get_doors_open() * DOOR_OPENING_TIME)
             self.trajectory_list.append(trajetory_step)
 
         # while not at correct position and velocity is 0, get new step in trajectory
@@ -111,7 +124,7 @@ class Elevator:
             if(dist * current_speed < 0):
                 # first completely slow down, before reversing
                 time_to_slow_down = abs(current_speed / self.max_acceleration)
-                acc_for_step = -self.max_acceleration if self.current_speed > 0 else self.max_acceleration
+                acc_for_step = -self.max_acceleration if current_speed > 0 else self.max_acceleration
 
                 new_pos = current_pos + current_speed * time_to_slow_down + 0.5 * acc_for_step *time_to_slow_down**2
                 self.trajectory_list.append(self.Trajectory(new_pos, 0, time_to_slow_down))
@@ -176,8 +189,10 @@ class Elevator:
                         pass
         # target position was reached
         # add open doors
-        trajectory_step = self.trajectory_list[-1].copy().set_time(DOOR_OPENING_TIME)
-        self.trajectory_list.append(trajectory_step)
+        trajectory_step1 = self.trajectory_list[-1].copy().set_open(1).set_doors_opening_direction(1).set_time(DOOR_OPENING_TIME)
+        trajectory_step2 = self.trajectory_list[-1].copy().set_open(1).set_time(DOOR_STAYING_OPEN_TIME)
+
+        self.trajectory_list.extend([trajectory_step1, trajectory_step2])
         
 
     def get_time_to_target(self) -> float:
@@ -187,7 +202,7 @@ class Elevator:
             float: time in seconds
 
         """
-        # if at target position: time to target is infty as this elevator. Makes sense as we only care about
+        # if at target position: time to target is infty. Makes sense as we only care about
         # elevators that are not yet at their target
         if(len(self.trajectory_list) == 1):
             return INFTY
@@ -204,23 +219,6 @@ class Elevator:
         if(len(self.trajectory_list) == 1):
             return
 
-        # Test Edge Case: Door is opening, meaning only have to either fully open the door or partially further open door
-        if(self.door_is_opening):
-            
-            assert time_step <= DOOR_OPENING_TIME * (1 - self.door_opened_percentage)
-
-            self.door_opened_percentage += time_step / DOOR_OPENING_TIME
-
-            if(self.door_opened_percentage == 1):
-                self.door_is_opening = False
-                self.trajectory_list = self.trajectory_list[0:1]
-            else:
-                next_trajectory_step = self.trajectory_list[0].copy().set_time((1-self.door_opened_percentage) * DOOR_OPENING_TIME)
-                
-                self.trajectory_list[0] = next_trajectory_step
-            
-            # door opening case fully handled            
-            return
 
         # find first step of trajectory with cummulated simulation time more than time_step
         i = 0
@@ -232,56 +230,68 @@ class Elevator:
         # (as every end of a trajectory will result in open doors)
         if(i + 1 == len(self.trajectory_list)):
             self.trajectory_list = [self.trajectory_list[-1].copy().set_time(0)]
-            self.door_opened_percentage = 1
             return
 
         # did the door close before starting to move?
-        # maybe update trajectory with opening and closing property
-        if(self.trajectory_list[0].position == self.trajectory_list[1].position and self.trajectory_list[0].speed == self.trajectory_list[1].speed):
-            # update door value
-            self.door_opened_percentage = 0
+
         
         self.trajectory_list = self.trajectory_list[i:]
 
         
         # modify partial executed step along trajectory
-        last_pos, last_speed, last_time = self.trajectory_list[0].get_values()
-        next_pos, next_speed, next_time = self.trajectory_list[1].get_values()
-        
+        last_pos, last_speed, last_time, last_doors = self.trajectory_list[0].get_values()
+        next_pos, next_speed, next_time, next_doors = self.trajectory_list[1].get_values()
+
         percentage_excecuted = time_step / next_time
 
-        # case distinctions
-        if(last_pos == next_pos):
-            # door opens or closes
-            new_pos = last_pos
-            new_speed = last_speed
-            # if more trajectory after door movement => door closes
-            if(len(self.trajectory_list) > 1):
-                self.door_is_opening = False
-                self.door_opened_percentage = (DOOR_OPENING_TIME - time_step) / (DOOR_OPENING_TIME)
-            else:
-                # door is opening
-                self.door_is_opening = True
-                self.door_opened_percentage = time_step / DOOR_OPENING_TIME
-            pass
-            new_time = DOOR_OPENING_TIME - time_step
-        else:
-            if(last_speed == next_speed):
-                new_pos = last_pos + (next_pos - last_pos) * percentage_excecuted
-                new_speed = last_speed
-                # full speed
-                pass
-            else:
-                # accelerating
-                new_speed = last_speed + (next_speed - last_speed) * percentage_excecuted
-                new_pos = last_pos + last_speed * time_step + (new_speed - last_speed)/2 * time_step
-
-                pass
-            pass
-
+        new_doors = last_doors + (next_doors - last_doors) * percentage_excecuted
+        new_speed = last_speed + (next_speed - last_speed) * percentage_excecuted
+        new_pos = last_pos + last_speed * time_step + (new_speed - last_speed)/2 * time_step
         new_time = next_time - time_step
+        new_doors_direction = sign(next_doors - last_doors)
         
-        self.trajectory_list[0] = self.Trajectory(new_pos, new_speed, 0)
-        self.trajectory_list[1] = self.trajectory_list[1].copy().set_time(new_time)
+        
+        self.trajectory_list[0] = self.Trajectory(new_pos, new_speed, 0, doors_open=new_doors)
+        self.trajectory_list[1] = self.trajectory_list[1].copy().set_time(new_time).set_doors_opening_direction(new_doors_direction)
         pass
 
+    def get_position(self) -> float:
+        """ Returns the current position of the elevator
+
+        Returns:
+            float: the position in floors
+        """
+        return self.trajectory_list[0].position
+
+    def get_speed(self) -> float:
+        """ Returns the current speed of the elevator
+
+        Returns:
+            float: the speed (positive going up / negative going down) in floors per second
+        """
+        return self.trajectory_list[0].speed
+    
+    def get_doors_open(self) -> float:
+        """ Returns the current "openness" value of the doors. 
+
+        Returns:
+            float: the percentage of how much the doors are open (1 = open,  0 = closed)
+        """
+        return self.trajectory_list[0].doors_open
+    
+    def are_doors_opening(self) -> bool:
+        return self.trajectory_list[0].are_doors_opening()
+    
+    def set_doors_open(self, new_percentage_open: float):
+        """ Set the doors_open value for the elevator.
+
+        Args:
+            new_percentage_open (float): the percentage of how much the doors are open (1 = open,  0 = closed)
+
+        Raises:
+            Exception: If tried to set while on a trajectory.
+        """
+        if(len(self.trajectory_list) > 1):
+            # do not open doors midpath
+            raise Exception("Cannot set doors_open value while on a trajectory. Must have arrived at target.")
+        self.trajectory_list[0].set_open(new_percentage_open)
