@@ -1,12 +1,14 @@
 [tool.poetry]
 name = "pxsim"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["Adrian Fagerland <adrian.fagerland@hotmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.10, <3.13"
+numpy = "^1.26.1"
+poetry-version = "^0.2.0"
 
 
 [build-system]

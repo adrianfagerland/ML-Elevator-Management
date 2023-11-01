@@ -1,16 +1,11 @@
 
 import time
-from turtle import pos
 from typing import Callable
 from random import Random
 import csv
 from datetime import datetime
 
-from torch import floor
-
 from elsim.elevator import Elevator
-from elsim.elsim import elevator
-from elsim.parameters import INFTY, DOOR_OPENING_TIME, DATETIME_FORMAT_INPUT
 
 class ElevatorSimulator:
     """Class for running an decision algorithm as a controller for a simulated elevator system in a building.
@@ -77,7 +72,7 @@ class ElevatorSimulator:
             fields = dict(enumerate(next(reader))) # not needed right now
             # read and convert data
             all_arrivals = list(reader)
-            all_arrivals = list(map(lambda x: [datetime.strptime(x[0], DATETIME_FORMAT_INPUT), int(x[1]), int(x[2])], all_arrivals))
+            all_arrivals = list(map(lambda x: [datetime.fromisoformat(x[0]), int(x[1]), int(x[2])], all_arrivals))
             sorted_arrivals : list = sorted(all_arrivals, key=lambda x: x[0])
             
         # convert datetime to seconds since first arrival
@@ -88,12 +83,12 @@ class ElevatorSimulator:
         """ Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
         """
 
-    def run(self, 
+    def run(self,
+            path: str,
             time_to_run : int,
             decision_algorithm : Callable):
         
-        # read data in 
-        self.read_in_people_data("..\\pxsim\\elevator_data.csv")
+        self.read_in_people_data(path)
         
         # start clock for simulation
         world_time = 0
@@ -149,4 +144,4 @@ class ElevatorSimulator:
     
 if __name__ == "__main__":
     e = ElevatorSimulator(10,4)
-    e.run(10, lambda x:x)
+    e.run("../pxsim/data/w1_f9_0.1.0.csv", 10, lambda x:x)
