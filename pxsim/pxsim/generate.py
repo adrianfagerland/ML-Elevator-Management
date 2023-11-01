@@ -49,7 +49,12 @@ def generate_entries_for_week(num_floors: int, start_time: datetime.datetime, di
         entries = distribution.generate_distribution(num_of_entries)
         entries.sort()
         for second in entries:
-            yield (start_of_day + datetime.timedelta(seconds=second), random.randint(0, num_floors - 1), random.randint(0, num_floors - 1))
+            startfloor = random.randint(0, num_floors - 1)
+            endfloor = random.randint(0, num_floors - 1)
+            while endfloor == startfloor:
+                endfloor = random.randint(0, num_floors - 1)
+            yield (start_of_day + datetime.timedelta(seconds=second), startfloor, endfloor)
+
 
 def write_to_csv(num_weeks, num_floors):
     """
@@ -59,13 +64,16 @@ def write_to_csv(num_weeks, num_floors):
     with open(f'../pxsim/data/w{num_weeks}_f{num_floors}_{extract(__file__)}.csv', 'w') as f:
         f.write('timestamp,startfloor,endfloor\n')
         for entry in generate_weeks(num_weeks, num_floors):
-            f.write(f'{entry[0].isoformat()},{entry[1]},{entry[2]}\n')
-    
+            f.write(f'{entry[0].isoformat()}, {entry[1]}, {entry[2]}\n')
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate tuples of the form (timestamp, startfloor, endfloor) for a given number of weeks')
-    parser.add_argument('num_weeks', type=int, help='How many weeks shall the generator yield for')
-    parser.add_argument('num_floors', type=int, help='The number of floors in the simulated building')
+    parser = argparse.ArgumentParser(
+        description='Generate tuples of the form (timestamp, startfloor, endfloor) for a given number of weeks')
+    parser.add_argument('num_weeks', type=int,
+                        help='How many weeks shall the generator yield for')
+    parser.add_argument('num_floors', type=int,
+                        help='The number of floors in the simulated building')
     args = parser.parse_args()
 
     write_to_csv(args.num_weeks, args.num_floors)
