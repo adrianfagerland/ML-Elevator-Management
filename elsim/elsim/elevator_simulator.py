@@ -4,7 +4,7 @@ from typing import Callable
 from random import Random
 import csv
 from datetime import datetime
-
+from elsim.parameters import INFTY
 from elsim.elevator import Elevator
 
 
@@ -89,7 +89,6 @@ class ElevatorSimulator:
 
     def run(self,
             path: str,
-            time_to_run: int,
             decision_algorithm: Callable
             ):
 
@@ -101,16 +100,25 @@ class ElevatorSimulator:
         next_arrival_index = 0
 
         # while not running
-        while (world_time < time_to_run):
+        while True:
             # get next event that needs to be handled by decision_algorithm
             # => either an elevator arrives or a person arrives
 
-            next_arrival, floor_start, floor_end = self.arrivals[next_arrival_index]
+            # Get next person arrival if no person left set time to arrival to infty
+            if (next_arrival_index >= len(self.arrivals)):
+                next_arrival, floor_start, floor_end = INFTY, 0, 0
+            else:
+                next_arrival, floor_start, floor_end = self.arrivals[next_arrival_index]
 
             next_elevator_index, next_elevator_time = sorted([(ind, elevator.get_time_to_target(
             )) for ind, elevator in enumerate(self.elevators)], key=lambda x: x[1])[0]
 
-            if (next_arrival > world_time + next_elevator_time):
+            print(next_arrival)
+            # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
+            if (min(next_arrival, next_elevator_time) >= INFTY):
+                break
+
+            if (next_arrival < world_time + next_elevator_time):
                 # person arrives. Add them to the right queues and update the buttons pressed
                 if (floor_end > floor_start):
                     self.floor_queue_list_up[floor_start].append(
@@ -123,6 +131,7 @@ class ElevatorSimulator:
                 else:
                     raise Exception(
                         "Wrong person input: Target Floor and Start Floor are equal")
+                next_arrival_index += 1
             else:
                 # elevator arrives
                 arrived_elevator = self.elevators[next_elevator_index]
@@ -138,7 +147,7 @@ class ElevatorSimulator:
                 self.elevator_riding_list[next_elevator_index] = list(filter(lambda x: x[2] == arrived_floor,
                                                                              self.elevator_riding_list[next_elevator_index]))
 
-                # depending on the direction of the elevator: update floors buttons by disabling them and
+                # depending on the direction of the elevator: update floors buttons by disabling them
                 if (arrived_elevator.continue_up):
                     self.floor_buttons_pressed_up[arrived_floor] = 0
                     elevator_join_list = self.floor_queue_list_up[arrived_floor]
@@ -171,14 +180,19 @@ class ElevatorSimulator:
 
                 pass
 
+                # update buttons in elevator
                 elevator_target_list = [x[2] for x in self.elevator_riding_list[next_elevator_index]]
                 self.elevator_buttons_list[next_elevator_index] = [1 if i in elevator_target_list else 0
                                                                    for i in range(0, self.num_floors)]
-                # update buttons in elevator
+                world_time += next_elevator_time
+            # Arrivals handled. DONE!
 
-            # Arrivals handled.
+            # Call ECG algorithm and set target of each elevator if not already set target
+            decisions = decision_algorithm()
+
+    pass
 
 
 if __name__ == "__main__":
     e = ElevatorSimulator(10, 4)
-    e.run("../pxsim/data/w1_f9_0.1.0.csv", 10, lambda x: x)
+    e.run("../pxsim/data/w1_f9_1.0.1.csv", lambda x: x)
