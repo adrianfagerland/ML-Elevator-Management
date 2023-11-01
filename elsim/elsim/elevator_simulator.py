@@ -9,6 +9,7 @@ from datetime import datetime
 from torch import floor
 
 from elsim.elevator import Elevator
+from elsim.elsim import elevator
 from elsim.parameters import INFTY, DOOR_OPENING_TIME, DATETIME_FORMAT_INPUT
 
 class ElevatorSimulator:
@@ -54,8 +55,9 @@ class ElevatorSimulator:
         self.floor_queue_list_up = [list() for _ in range(self.num_floors)]
         self.floor_queue_list_down = [list() for _ in range(self.num_floors)]
 
-
-        self.elevator_riding_list = [list() for _ in range(self.num_elevators)]
+        # Each elevator has a list in which every current passanger is represented by a tuple 
+        # each tuple consists of (arriving time, entry elevator time, target floor)
+        self.elevator_riding_list : list[list[tuple[float, float, int] | None]] = [list() for _ in range(self.num_elevators)]
         self.elevator_buttons_list = [[0 for _ in range(self.num_floors)] for _ in range(self.num_elevators)]
 
 
@@ -121,15 +123,22 @@ class ElevatorSimulator:
             else:
                 # elevator arrives
                 arrived_elevator = self.elevators[next_elevator_index]
-                arrived_floor = arrived_elevator.trajectory_list[0].position
+                arrived_floor = int(arrived_elevator.trajectory_list[0].position)
                 # update floors buttons by disabling them 
                 if(arrived_elevator.continue_up):
-                    self.floor_buttons_pressed_up[0]
+                    self.floor_buttons_pressed_up[arrived_floor] = 0
+                else:
+                    self.floor_buttons_pressed_down[arrived_floor] = 0
+
 
                 # 1. do people want to leave?
+                self.elevator_riding_list[next_elevator_index] = list(filter(lambda x: x == None or x[2] == arrived_floor, 
+                                                                             self.elevator_riding_list[next_elevator_index]))
+                
+                
                 # 2. do people want to enter?
                 # -> can people enter? i.e. max capacity
-
+                
                 # update outer buttons
 
 
