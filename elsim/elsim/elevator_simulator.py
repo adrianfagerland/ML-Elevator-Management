@@ -1,4 +1,3 @@
-
 import time
 from typing import Callable
 from random import Random
@@ -71,17 +70,11 @@ class ElevatorSimulator:
         """
         with open(path, 'r') as csvfile:
             reader = csv.reader(csvfile)
-            fields = dict(enumerate(next(reader)))  # not needed right now
-            # read and convert data
-            all_arrivals = list(reader)
-            all_arrivals = list(map(lambda x: [datetime.fromisoformat(
-                x[0]), int(x[1]), int(x[2])], all_arrivals))
-            sorted_arrivals: list = sorted(all_arrivals, key=lambda x: x[0])
+            next(reader)  # Skip the header row
+            all_arrivals = [[datetime.fromisoformat(row[0]), int(row[1]), int(row[2])] for row in reader]
 
-        # convert datetime to seconds since first arrival
-        start_time = sorted_arrivals[0][0]
-        self.arrivals = list(map(lambda x: (
-            (x[0] - start_time).total_seconds(), x[1], x[2]), sorted_arrivals))
+        start_time = all_arrivals[0][0]
+        self.arrivals = [( (arrival[0] - start_time).total_seconds(), arrival[1], arrival[2]) for arrival in all_arrivals]
 
     def init_simulation(self):
         """ Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
