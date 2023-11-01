@@ -75,6 +75,8 @@ class Elevator:
         self.num_passangers = num_passangers
         self.target_position: int = int(current_position)
 
+
+
         # After arriving on target floor, will the elevator continue up or down?
         # This is set before arriving, but can be ignored by the next command. This information is
         # given to the people in queue on the floor, so they may decide whether this elevator is for them
@@ -97,8 +99,8 @@ class Elevator:
             Exception: If floor number is not valid.
         """
         if (self.num_floors <= new_target_position or new_target_position < 0):
-            raise Exception(f"New Target Floor {
-                            new_target_position} is not in the right range of 0 to {self.num_floors}")
+            raise Exception(
+                f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}")
 
         self.target_position = new_target_position
 
