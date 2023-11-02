@@ -6,6 +6,9 @@ from datetime import datetime
 from elsim.parameters import INFTY
 from elsim.elevator import Elevator
 
+TEST_ELEVATOR_SCHEDULING = [2, 5, 6, 7, 1, 3, 10, 2, 5, 1, 6, 6, 8,]
+l = 0
+
 
 class ElevatorSimulator:
     """Class for running an decision algorithm as a controller for a simulated elevator system in a building.
@@ -74,7 +77,8 @@ class ElevatorSimulator:
             all_arrivals = [[datetime.fromisoformat(row[0]), int(row[1]), int(row[2])] for row in reader]
 
         start_time = all_arrivals[0][0]
-        self.arrivals = [( (arrival[0] - start_time).total_seconds(), arrival[1], arrival[2]) for arrival in all_arrivals]
+        self.arrivals = [((arrival[0] - start_time).total_seconds(), arrival[1], arrival[2])
+                         for arrival in all_arrivals]
 
     def init_simulation(self):
         """ Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
@@ -103,15 +107,19 @@ class ElevatorSimulator:
             else:
                 next_arrival, floor_start, floor_end = self.arrivals[next_arrival_index]
 
-            next_elevator_index, next_elevator_time = sorted([(ind, elevator.get_time_to_target(
-            )) for ind, elevator in enumerate(self.elevators)], key=lambda x: x[1])[0]
-
+            elevator_arrival_times = [(ind, elevator.get_time_to_target())
+                                      for ind, elevator in enumerate(self.elevators)]
+            next_elevator_index, next_elevator_time = sorted(elevator_arrival_times, key=lambda x: x[1])[0]
             print(next_arrival)
             # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
             if (min(next_arrival, next_elevator_time) >= INFTY):
                 break
 
             if (next_arrival < world_time + next_elevator_time):
+                # simulate elevators till person arrives
+                for elevator in self.elevators:
+                    elevator.advance_simulation(next_arrival - world_time)
+
                 # person arrives. Add them to the right queues and update the buttons pressed
                 if (floor_end > floor_start):
                     self.floor_queue_list_up[floor_start].append(
@@ -126,15 +134,13 @@ class ElevatorSimulator:
                         "Wrong person input: Target Floor and Start Floor are equal")
                 next_arrival_index += 1
             else:
-                # elevator arrives
+                # simulate movement of elevators
+                world_time += next_elevator_time
+                for elevator in self.elevators:
+                    elevator.advance_simulation(next_elevator_time)
+
                 arrived_elevator = self.elevators[next_elevator_index]
-                arrived_floor = int(
-                    arrived_elevator.trajectory_list[0].position)
-                # update floors buttons by disabling them
-                if (arrived_elevator.continue_up):
-                    self.floor_buttons_pressed_up[arrived_floor] = 0
-                else:
-                    self.floor_buttons_pressed_down[arrived_floor] = 0
+                arrived_floor = int(arrived_elevator.trajectory_list[0].position)
 
                 # 1. do people want to leave?
                 self.elevator_riding_list[next_elevator_index] = list(filter(lambda x: x[2] == arrived_floor,
@@ -153,11 +159,12 @@ class ElevatorSimulator:
                 num_possible_join = self.max_load - \
                     len(self.elevator_riding_list[next_elevator_index])
 
-                self.elevator_riding_list[next_elevator_index] += elevator_join_list[:min(
-                    num_possible_join, len(elevator_join_list))]
+                for i in range(min(len(elevator_join_list), num_possible_join)):
+                    self.elevator_riding_list[next_elevator_index].append((
+                        elevator_join_list[i][0], world_time, elevator_join_list[i][1]))
 
-                elevator_join_list = elevator_join_list[:max(
-                    len(elevator_join_list), num_possible_join)]
+                elevator_join_list = elevator_join_list[max(
+                    len(elevator_join_list), num_possible_join):]
 
                 if (len(elevator_join_list) > 0):
                     # not all people could join, press elevator button again after few seconds
@@ -166,7 +173,7 @@ class ElevatorSimulator:
 
                     # find spot to insert new arrival
                     i = next_arrival_index
-                    while (self.arrivals[i][0] < new_arrival_time):
+                    while (i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time):
                         i += 1
                     for start_time, end_floor in elevator_join_list:
                         self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
@@ -174,18 +181,26 @@ class ElevatorSimulator:
                 pass
 
                 # update buttons in elevator
-                elevator_target_list = [x[2] for x in self.elevator_riding_list[next_elevator_index]]
+                elevator_target_list = [x[1] for x in self.elevator_riding_list[next_elevator_index]]
                 self.elevator_buttons_list[next_elevator_index] = [1 if i in elevator_target_list else 0
                                                                    for i in range(0, self.num_floors)]
-                world_time += next_elevator_time
+
             # Arrivals handled. DONE!
 
             # Call ECG algorithm and set target of each elevator if not already set target
-            decisions = decision_algorithm()
+            # decisions = decision_algorithm()
+
+            # random implementation
+
+            for elevator in self.elevators:
+                if (elevator.get_time_to_target() == INFTY):
+                    global l
+                    elevator.set_target_position(TEST_ELEVATOR_SCHEDULING[l], False)
+                    l += 1
 
     pass
 
 
 if __name__ == "__main__":
     e = ElevatorSimulator(10, 4)
-    e.run("../pxsim/data/w1_f9_1.0.1.csv", lambda x: x)
+    e.run("../pxsim/data/test_data.csv", lambda x: x)

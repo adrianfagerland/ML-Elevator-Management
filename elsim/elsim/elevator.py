@@ -75,8 +75,6 @@ class Elevator:
         self.num_passangers = num_passangers
         self.target_position: int = int(current_position)
 
-
-
         # After arriving on target floor, will the elevator continue up or down?
         # This is set before arriving, but can be ignored by the next command. This information is
         # given to the people in queue on the floor, so they may decide whether this elevator is for them
@@ -87,13 +85,16 @@ class Elevator:
             current_position, current_speed, 0)]
         self._time_target: float = INFTY
 
-    def set_target_position(self, new_target_position: int):
+    def set_target_position(self, new_target_position: int, continue_up: bool):
         """ Set the next target position. Can be done while the elevator is moving (i.e., following a trajectorie). 
         Is not going to affect anything if the doors are currently opening as the doors will continue with their plan 
-        and will ask for a new target if the doors are fully openend.
+        and will ask for a new target if the doors are fully openend. 
 
         Args:
             new_target_position (int): The floor number.
+            continue_up (bool): Whether the elevator, will continue up after arriving at target. 
+                                Used to signal waiting passengers, if they should board. Can be violated in the next 
+                                set_target_position() 
 
         Raises:
             Exception: If floor number is not valid.
@@ -108,8 +109,7 @@ class Elevator:
         # rather open the door fully, people can then enter or exit (if there are people there)
         # and then set_target_position is called anyway, because a new target is needed
         if (self.are_doors_opening()):
-            self._time_target = sum(
-                [trajectory_step.time for trajectory_step in self.trajectory_list])
+            self._time_target = sum([trajectory_step.time for trajectory_step in self.trajectory_list])
         else:
             self.update_trajectory()
 
