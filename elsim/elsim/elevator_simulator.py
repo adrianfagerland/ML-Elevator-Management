@@ -191,7 +191,7 @@ class ElevatorSimulator:
             # decisions = decision_algorithm()
 
             # random implementation
-
+            print(1)
             for elevator in self.elevators:
                 if (elevator.get_time_to_target() == INFTY):
                     global l
