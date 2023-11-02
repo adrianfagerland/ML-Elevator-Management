@@ -6,7 +6,11 @@ authors = ["Adrian Fagerland <adrian.fagerland@hotmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.13
+python = ">=3.10, <3.13"
+numpy = "^1.26.1"
+torch = "^2.1.0"
+tensordict = "^0.2.1"
+matplotlib = "^3.8.1"
 
 
 [build-system]
