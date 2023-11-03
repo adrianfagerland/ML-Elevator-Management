@@ -183,7 +183,9 @@ class ElevatorSimulator:
             # Call ECG algorithm and set target of each elevator if not already set target
             decisions = decision_algorithm()
 
-    pass
+    
+
+    
 
 
 if __name__ == "__main__":
