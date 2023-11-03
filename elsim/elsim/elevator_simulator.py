@@ -5,6 +5,8 @@ import csv
 from datetime import datetime
 from elsim.parameters import INFTY
 from elsim.elevator import Elevator
+import numpy as np
+
 
 TEST_ELEVATOR_SCHEDULING = [2, 5, 6, 7, 1, 3, 10, 2, 5, 1, 6, 6, 8,]
 l = 0
@@ -76,131 +78,152 @@ class ElevatorSimulator:
             next(reader)  # Skip the header row
             all_arrivals = [[datetime.fromisoformat(row[0]), int(row[1]), int(row[2])] for row in reader]
 
+        # Check that all specified floors are valid in this building
+        assert min([arrivals[2] for arrivals in all_arrivals]) >= 0 and max([arrivals[2] for arrivals in all_arrivals]) < self.num_floors
+        assert min([arrivals[1] for arrivals in all_arrivals]) >= 0 and max([arrivals[1] for arrivals in all_arrivals]) < self.num_floors
+
         start_time = all_arrivals[0][0]
         self.arrivals = [((arrival[0] - start_time).total_seconds(), arrival[1], arrival[2])
                          for arrival in all_arrivals]
 
-    def init_simulation(self):
+    def init_simulation(self, path: str):
         """ Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
+        
+        Args:
+            path (str): path to the csv file containing the arrival data with the specified format.
         """
-
-    def run(self,
-            path: str,
-            decision_algorithm: Callable
-            ):
-
         self.read_in_people_data(path)
 
         # start clock for simulation
-        world_time = 0
+        self.world_time = 0
+        self.next_arrival_index = 0
 
-        next_arrival_index = 0
+    def reset_simulation(self):
+        """ Resets the simulation by bringing simulation back into starting state
+        """
+        # TODO
+        pass
 
-        # while not running
-        while True:
-            # get next event that needs to be handled by decision_algorithm
-            # => either an elevator arrives or a person arrives
+    def step(self, actions):
 
-            # Get next person arrival if no person left set time to arrival to infty
-            if (next_arrival_index >= len(self.arrivals)):
-                next_arrival, floor_start, floor_end = INFTY, 0, 0
-            else:
-                next_arrival, floor_start, floor_end = self.arrivals[next_arrival_index]
+        # Execute actions
 
-            elevator_arrival_times = [(ind, elevator.get_time_to_target())
-                                      for ind, elevator in enumerate(self.elevators)]
-            next_elevator_index, next_elevator_time = sorted(elevator_arrival_times, key=lambda x: x[1])[0]
-            print(next_arrival)
-            # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
-            if (min(next_arrival, next_elevator_time) >= INFTY):
-                break
+        # random implementation
 
-            if (next_arrival < world_time + next_elevator_time):
-                # simulate elevators till person arrives
-                for elevator in self.elevators:
-                    elevator.advance_simulation(next_arrival - world_time)
+        for elevator in self.elevators:
+            if (elevator.get_time_to_target() == INFTY):
+                global l
+                elevator.set_target_position(TEST_ELEVATOR_SCHEDULING[l], False)
+                l += 1
 
-                # person arrives. Add them to the right queues and update the buttons pressed
-                if (floor_end > floor_start):
-                    self.floor_queue_list_up[floor_start].append(
-                        (next_arrival, floor_end))
-                    self.floor_buttons_pressed_up[floor_start] = 1
-                elif (floor_end < floor_start):
-                    self.floor_queue_list_down[floor_start].append(
-                        (next_arrival, floor_end))
-                    self.floor_buttons_pressed_down[floor_start] = 1
-                else:
-                    raise Exception(
-                        "Wrong person input: Target Floor and Start Floor are equal")
-                next_arrival_index += 1
-            else:
-                # simulate movement of elevators
-                world_time += next_elevator_time
-                for elevator in self.elevators:
-                    elevator.advance_simulation(next_elevator_time)
 
-                arrived_elevator = self.elevators[next_elevator_index]
-                arrived_floor = int(arrived_elevator.trajectory_list[0].position)
+        # get next event that needs to be handled by decision_algorithm
+        # => either an elevator arrives or a person arrives
 
-                # 1. do people want to leave?
-                self.elevator_riding_list[next_elevator_index] = list(filter(lambda x: x[2] == arrived_floor,
-                                                                             self.elevator_riding_list[next_elevator_index]))
+        # Get next person arrival if no person left set time to arrival to infty
+        if (self.next_arrival_index >= len(self.arrivals)):
+            next_arrival, floor_start, floor_end = INFTY, 0, 0
+        else:
+            next_arrival, floor_start, floor_end = self.arrivals[self.next_arrival_index]
 
-                # depending on the direction of the elevator: update floors buttons by disabling them
-                if (arrived_elevator.continue_up):
-                    self.floor_buttons_pressed_up[arrived_floor] = 0
-                    elevator_join_list = self.floor_queue_list_up[arrived_floor]
+        elevator_arrival_times = [(ind, elevator.get_time_to_target())
+                                    for ind, elevator in enumerate(self.elevators)]
+        next_elevator_index, next_elevator_time = sorted(elevator_arrival_times, key=lambda x: x[1])[0]
+        print(next_arrival)
+        # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
+        if (min(next_arrival, next_elevator_time) >= INFTY):
+            #break
+            # discuss how to handle run out of data in the context of learning
 
-                else:
-                    self.floor_buttons_pressed_down[arrived_floor] = 0
-                    elevator_join_list = self.floor_queue_list_down[arrived_floor]
+            return 
 
-                # add the people queing on that floor the the elevator riding list if still enough space
-                num_possible_join = self.max_load - \
-                    len(self.elevator_riding_list[next_elevator_index])
-
-                for i in range(min(len(elevator_join_list), num_possible_join)):
-                    self.elevator_riding_list[next_elevator_index].append((
-                        elevator_join_list[i][0], world_time, elevator_join_list[i][1]))
-
-                elevator_join_list = elevator_join_list[max(
-                    len(elevator_join_list), num_possible_join):]
-
-                if (len(elevator_join_list) > 0):
-                    # not all people could join, press elevator button again after few seconds
-                    button_press_again_time = self.r.randint(4, 8)
-                    new_arrival_time = world_time + next_elevator_time + button_press_again_time
-
-                    # find spot to insert new arrival
-                    i = next_arrival_index
-                    while (i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time):
-                        i += 1
-                    for start_time, end_floor in elevator_join_list:
-                        self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
-
-                pass
-
-                # update buttons in elevator
-                elevator_target_list = [x[1] for x in self.elevator_riding_list[next_elevator_index]]
-                self.elevator_buttons_list[next_elevator_index] = [1 if i in elevator_target_list else 0
-                                                                   for i in range(0, self.num_floors)]
-
-            # Arrivals handled. DONE!
-
-            # Call ECG algorithm and set target of each elevator if not already set target
-            # decisions = decision_algorithm()
-
-            # random implementation
-            print(1)
+        if (next_arrival < self.world_time + next_elevator_time):
+            # simulate elevators till person arrives
             for elevator in self.elevators:
-                if (elevator.get_time_to_target() == INFTY):
-                    global l
-                    elevator.set_target_position(TEST_ELEVATOR_SCHEDULING[l], False)
-                    l += 1
+                elevator.advance_simulation(next_arrival - self.world_time)
 
-    pass
+            # person arrives. Add them to the right queues and update the buttons pressed
+            if (floor_end > floor_start):
+                self.floor_queue_list_up[floor_start].append(
+                    (next_arrival, floor_end))
+                self.floor_buttons_pressed_up[floor_start] = 1
+            elif (floor_end < floor_start):
+                self.floor_queue_list_down[floor_start].append(
+                    (next_arrival, floor_end))
+                self.floor_buttons_pressed_down[floor_start] = 1
+            else:
+                raise Exception(
+                    "Wrong person input: Target Floor and Start Floor are equal")
+            self.next_arrival_index += 1
+        else:
+            # simulate movement of elevators
+            self.world_time += next_elevator_time
+            for elevator in self.elevators:
+                elevator.advance_simulation(next_elevator_time)
 
+            arrived_elevator = self.elevators[next_elevator_index]
+            arrived_floor = int(arrived_elevator.trajectory_list[0].position)
+
+            # 1. do people want to leave?
+            self.elevator_riding_list[next_elevator_index] = list(filter(lambda x: x[2] == arrived_floor,
+                                                                            self.elevator_riding_list[next_elevator_index]))
+
+            # depending on the direction of the elevator: update floors buttons by disabling them
+            if (arrived_elevator.continue_up):
+                self.floor_buttons_pressed_up[arrived_floor] = 0
+                elevator_join_list = self.floor_queue_list_up[arrived_floor]
+
+            else:
+                self.floor_buttons_pressed_down[arrived_floor] = 0
+                elevator_join_list = self.floor_queue_list_down[arrived_floor]
+
+            # add the people queing on that floor the the elevator riding list if still enough space
+            num_possible_join = self.max_load - \
+                len(self.elevator_riding_list[next_elevator_index])
+
+            for i in range(min(len(elevator_join_list), num_possible_join)):
+                self.elevator_riding_list[next_elevator_index].append((
+                    elevator_join_list[i][0], self.world_time, elevator_join_list[i][1]))
+
+            elevator_join_list = elevator_join_list[max(
+                len(elevator_join_list), num_possible_join):]
+
+            if (len(elevator_join_list) > 0):
+                # not all people could join, press elevator button again after few seconds
+                button_press_again_time = self.r.randint(4, 8)
+                new_arrival_time = self.world_time + next_elevator_time + button_press_again_time
+
+                # find spot to insert new arrival
+                i = self.next_arrival_index
+                while (i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time):
+                    i += 1
+                for start_time, end_floor in elevator_join_list:
+                    self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
+
+            pass
+
+            # update buttons in elevator
+            elevator_target_list = [x[1] for x in self.elevator_riding_list[next_elevator_index]]
+            self.elevator_buttons_list[next_elevator_index] = [1 if i in elevator_target_list else 0
+                                                                for i in range(0, self.num_floors)]
+
+        # Arrivals handled. DONE!
+        
+        # return the data for the observations
+        elevator_doors = np.array([elevator.get_doors_open() for elevator in self.elevators])
+        elevator_positions_speed = np.array([(elevator.get_position(), elevator.get_speed()) for elevator in self.elevators])
+        elevator_buttons = np.array(self.elevator_buttons_list)
+        elevator_target = np.array([elevator.get_target_position() for elevator in self.elevators])
+        
+        floor_buttons = np.array(zip(self.floor_buttons_pressed_up, self.floor_buttons_pressed_down))
+        
+        # Return current state
+        return {"elevator_doors":elevator_doors, 
+                "elevator_positions_speed":elevator_positions_speed,
+                "elevator_buttons":elevator_buttons,
+                "elevator_target":elevator_target,
+                "floor_buttons":floor_buttons}
 
 if __name__ == "__main__":
     e = ElevatorSimulator(10, 4)
-    e.run("../pxsim/data/test_data.csv", lambda x: x)
+    e.init_simulation("../pxsim/data/test_data.csv")

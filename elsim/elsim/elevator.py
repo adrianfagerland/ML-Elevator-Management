@@ -85,6 +85,7 @@ class Elevator:
             current_position, current_speed, 0)]
         self._time_target: float = INFTY
 
+
     def set_target_position(self, new_target_position: int, continue_up: bool):
         """ Set the next target position. Can be done while the elevator is moving (i.e., following a trajectorie). 
         Is not going to affect anything if the doors are currently opening as the doors will continue with their plan 
@@ -102,7 +103,8 @@ class Elevator:
         if (self.num_floors <= new_target_position or new_target_position < 0):
             raise Exception(
                 f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}")
-
+        
+        self.continue_up = continue_up
         self.target_position = new_target_position
 
         # if the door is currently opening, do not update the trajectory i.e. close the door and move again
@@ -326,3 +328,11 @@ class Elevator:
             raise Exception(
                 "Cannot set doors_open value while on a trajectory. Must have arrived at target.")
         self.trajectory_list[0].set_open(new_percentage_open)
+
+    def get_target_position(self) -> int:
+        """ Returns the target floor for this elevator.
+
+        Returns:
+            int: the value of the target floor (0 = ground floor, num_floors - 1 = highest floor)
+        """
+        return self.target_position
