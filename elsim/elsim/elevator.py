@@ -7,7 +7,8 @@ from copy import deepcopy
 from numpy import sign
 
 
-from elsim.parameters import DOOR_STAYING_OPEN_TIME, INFTY, DOOR_OPENING_TIME
+from elsim.parameters import DOOR_STAYING_OPEN_TIME, DOOR_OPENING_TIME
+from numpy import infty as INFTY
 
 
 class Elevator:
@@ -75,27 +76,26 @@ class Elevator:
         self.num_passangers = num_passangers
         self.target_position: int = int(current_position)
 
-        # After arriving on target floor, will the elevator continue up or down?
+        # After arriving on target floor, will the elevator continue up (1) or down (-1) or not yet decided (0)?
         # This is set before arriving, but can be ignored by the next command. This information is
         # given to the people in queue on the floor, so they may decide whether this elevator is for them
         # (or maybe for another person going the other direction also waiting on the floor)
-        self.continue_up: bool = True
+        self.next_movement: int = 0
 
         self.trajectory_list = [self.Trajectory(
             current_position, current_speed, 0)]
         self._time_target: float = INFTY
 
-
-    def set_target_position(self, new_target_position: int, continue_up: bool):
+    def set_target_position(self, new_target_position: int, next_movement: int):
         """ Set the next target position. Can be done while the elevator is moving (i.e., following a trajectorie). 
         Is not going to affect anything if the doors are currently opening as the doors will continue with their plan 
         and will ask for a new target if the doors are fully openend. 
 
         Args:
             new_target_position (int): The floor number.
-            continue_up (bool): Whether the elevator, will continue up after arriving at target. 
-                                Used to signal waiting passengers, if they should board. Can be violated in the next 
-                                set_target_position() 
+            next_movement (int): Whether the elevator, will continue up (1), down (-1) or not decided yet (0), after arriving at target. 
+                                 Used to signal waiting passengers, if they should board. Can be violated in the next 
+                                 set_target_position() 
 
         Raises:
             Exception: If floor number is not valid.
@@ -103,8 +103,8 @@ class Elevator:
         if (self.num_floors <= new_target_position or new_target_position < 0):
             raise Exception(
                 f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}")
-        
-        self.continue_up = continue_up
+
+        self.next_movement = next_movement
         self.target_position = new_target_position
 
         # if the door is currently opening, do not update the trajectory i.e. close the door and move again

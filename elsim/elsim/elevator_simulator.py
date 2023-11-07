@@ -3,7 +3,8 @@ from typing import Callable
 from random import Random
 import csv
 from datetime import datetime
-from elsim.parameters import INFTY
+
+from numpy import infty as INFTY
 from elsim.elevator import Elevator
 import numpy as np
 from numpy import exp
@@ -108,16 +109,27 @@ class ElevatorSimulator:
         pass
 
     def loss_calculation(self, time_step: float) -> float:
+        """ Calculates the loss afte calling the step() function for the current step()
+
+        Args:
+            time_step (float): [the time the last step took in seconds]
+
+        Returns:
+            float: [the complete loss scaled down for a reasonable size]
+        """
         total_loss = 0
 
-        # TODO loop over all person and add their ind_loss to total loss
+        # loop over all person and add their ind_loss to total loss
         for riding_list in self.elevator_riding_list:
-            for rider in riding_list:
-                total_loss += 0
-    
+            for person_riding in riding_list:
+                # get individual loss
+                total_loss += self._ind_loss(time_step, person_riding[0])
+
         for waiting_queue in self.floor_queue_list_down:
+            for waiting_person in waiting_queue:
+                total_loss += self._ind_loss(time_step, waiting_person[0])
 
-
+        # also punish elevator movement
         return total_loss
 
     def _ind_loss(self, time_step: float, x_0: float) -> float:
@@ -140,7 +152,7 @@ class ElevatorSimulator:
 
         # TODO: Execute actions
 
-        # get next event that needs to be handled by decision_algorithm
+        # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
 
         # Get next person arrival if no person left set time to arrival to infty
@@ -149,19 +161,19 @@ class ElevatorSimulator:
         else:
             next_arrival, floor_start, floor_end = self.arrivals[self.next_arrival_index]
 
+        # Get next elevator arrival
         elevator_arrival_times = [(ind, elevator.get_time_to_target())
                                   for ind, elevator in enumerate(self.elevators)]
         next_elevator_index, next_elevator_time = sorted(elevator_arrival_times, key=lambda x: x[1])[0]
-        print(next_arrival)
+
         # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
         if (min(next_arrival, next_elevator_time) >= INFTY):
             # break
-            # discuss how to handle run out of data in the context of learning
+            # TODO: discuss how to handle run out of data in the context of learning
 
             return
 
         if (next_arrival < self.world_time + next_elevator_time):
-
             # update the time of the simulation and remember how big the interval was (for the loss function)
             step_size = next_arrival - self.world_time
             self.world_time = next_arrival
@@ -200,13 +212,27 @@ class ElevatorSimulator:
                                                                          self.elevator_riding_list[next_elevator_index]))
 
             # depending on the direction of the elevator: update floors buttons by disabling them
-            if (arrived_elevator.continue_up):
+            if (arrived_elevator.next_movement == 1):
                 self.floor_buttons_pressed_up[arrived_floor] = 0
                 elevator_join_list = self.floor_queue_list_up[arrived_floor]
 
-            else:
+            elif (arrived_elevator.next_movement == -1):
                 self.floor_buttons_pressed_down[arrived_floor] = 0
                 elevator_join_list = self.floor_queue_list_down[arrived_floor]
+            else:
+                # if next direction hasnt not yet been determined
+                # if both up and down are pressed but elevator has not given direction (what to do???) currently just going down
+                if (len(self.floor_queue_list_down[arrived_floor]) > 0 and len(self.floor_queue_list_up[arrived_floor])):
+                    self.floor_buttons_pressed_down[arrived_floor] = 0
+                    elevator_join_list = self.floor_queue_list_down[arrived_floor]
+                elif (len(self.floor_queue_list_up[arrived_floor]) > 0):
+                    self.floor_buttons_pressed_up[arrived_floor] = 0
+                    elevator_join_list = self.floor_queue_list_up[arrived_floor]
+                elif (len(self.floor_queue_list_down[arrived_floor]) > 0):
+                    self.floor_buttons_pressed_down[arrived_floor] = 0
+                    elevator_join_list = self.floor_queue_list_down[arrived_floor]
+                else:
+                    elevator_join_list = []
 
             # add the people queing on that floor the the elevator riding list if still enough space
             num_possible_join = self.max_load - \
@@ -238,7 +264,7 @@ class ElevatorSimulator:
             self.elevator_buttons_list[next_elevator_index] = [1 if i in elevator_target_list else 0
                                                                for i in range(0, self.num_floors)]
 
-        # Arrivals handled. DONE!
+        # Arrivals handled
 
         # return the data for the observations
         elevator_doors = np.array([elevator.get_doors_open() for elevator in self.elevators])
