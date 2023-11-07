@@ -29,10 +29,10 @@ class SystemEnvironment(EnvBase):
 
         self.num_elevators = num_elevators
         self.num_floors = num_floors
-        self.state_size = self.A.shape[0]
-        self.action_size = self.B.shape[1]
 
-        self.state = np.zeros((self.state_size, 1), dtype=self.dtype)
+        self.simulator = ElevatorSimulator(num_elevators=num_elevators,
+                                           num_floors=num_floors,
+                                           random_seed=0)
 
         # Define action specifications
         ac_elevator_target_spec = MultiOneHotDiscreteTensorSpec(nvec=[self.num_floors] * self.num_elevators,
@@ -69,15 +69,19 @@ class SystemEnvironment(EnvBase):
         return out_tensordict
 
     def _step(self, tensordict):
+        """ Function that is called by rollout of the enviroment
+
+        Args:
+            tensordict ([tensordict]): [the tensordict that contains the action that should be executed]
+
+        Returns:
+            [tensordict]: [the tensordict that contains the observations the reward and if the simulation is finished.]
+        """
         action = tensordict["action"]
-        action = action.cpu().numpy().reshape((self.action_size, 1))
 
-        self.state += self.dt * (self.A @ self.state + self.B @ action)
-
-        y = self.C @ self.state + self.D @ action
-
-        error = (self.ref - y) ** 2
-
+        output = self.simulator.step(action)
+        observations = output['observations']
+        error = output['error']
         reward = -error
 
         out_tensordict = TensorDict({"observation": torch.tensor(self.state.astype(self.dtype).flatten(), device=self.device),
