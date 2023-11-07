@@ -20,12 +20,11 @@ from elsim.elevator_simulator import ElevatorSimulator
 # TODO adjust system enviroment to work with elevator_simulator
 
 
-
 class SystemEnvironment(EnvBase):
     def __init__(self, num_elevators, num_floors, device_name="cpu"):
         super(SystemEnvironment, self).__init__()
         self.dtype = np.float32
-        
+
         self.device = device(device_name)
 
         self.num_elevators = num_elevators
@@ -34,26 +33,25 @@ class SystemEnvironment(EnvBase):
         self.action_size = self.B.shape[1]
 
         self.state = np.zeros((self.state_size, 1), dtype=self.dtype)
-        
+
         # Define action specifications
         ac_elevator_target_spec = MultiOneHotDiscreteTensorSpec(nvec=[self.num_floors] * self.num_elevators,
-                                                             device=self.device)
-        ac_elevator_continue_spec = BinaryDiscreteTensorSpec(n=2*self.num_floors, 
-                                                          shape=torch.Size([self.num_floors, 2])) 
-        
-        self.action_spec = CompositeSpec(target=ac_elevator_target_spec, continue_up=ac_elevator_continue_spec)
+                                                                device=self.device)
+        ac_elevator_next_movement_spec = MultiOneHotDiscreteTensorSpec(nvec=[3] * self.num_elevators,
+                                                                       device=self.device)
 
+        self.action_spec = CompositeSpec(target=ac_elevator_target_spec, next_movement=ac_elevator_next_movement_spec)
 
-        # Define observation specifications 
-        ob_el_doors_spec = BoundedTensorSpec(low=0,high=1,shape=torch.Size([self.num_elevators]))
-        ob_el_position_speed_spec = UnboundedContinuousTensorSpec(shape=torch.Size([self.num_elevators,2]),)
-        ob_el_buttons_spec = BinaryDiscreteTensorSpec(n=self.num_elevators * self.num_floors, 
-                                                            shape=torch.Size([self.num_elevators,self.num_floors]), 
-                                                            dtype=torch.bool)
-        ob_floors_buttons = BinaryDiscreteTensorSpec(n=2, 
-                                                     shape=torch.Size([self.num_floors,2]), 
+        # Define observation specifications
+        ob_el_doors_spec = BoundedTensorSpec(low=0, high=1, shape=torch.Size([self.num_elevators]))
+        ob_el_position_speed_spec = UnboundedContinuousTensorSpec(shape=torch.Size([self.num_elevators, 2]),)
+        ob_el_buttons_spec = BinaryDiscreteTensorSpec(n=self.num_elevators * self.num_floors,
+                                                      shape=torch.Size([self.num_elevators, self.num_floors]),
+                                                      dtype=torch.bool)
+        ob_floors_buttons = BinaryDiscreteTensorSpec(n=2,
+                                                     shape=torch.Size([self.num_floors, 2]),
                                                      dtype=torch.bool)
-        # TODO add current target as input 
+        # maybe TODO add current target as input
         self.observation_spec = CompositeSpec(el_doors=ob_el_doors_spec,
                                               el_pos_speed=ob_el_position_speed_spec,
                                               el_buttons=ob_el_buttons_spec,
