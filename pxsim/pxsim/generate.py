@@ -29,6 +29,10 @@ def generate_weeks(num_weeks: int = NUM_WEEKS, num_floors: int = NUM_FLOORS, sta
     start_of_week = start_time.date() - datetime.timedelta(days=start_time.weekday())
     start_of_week_datetime = datetime.datetime.combine(
         start_of_week, datetime.time.min)
+    if num_weeks < 1:
+        raise ValueError('num_weeks must be greater than 0')
+    if num_floors <= 1:
+        raise ValueError('num_floors must be greater than 1')
     for _ in range(num_weeks):
         for entry in generate_entries_for_week(num_floors, start_of_week_datetime, distribution):
             yield entry
@@ -60,8 +64,8 @@ def write_to_csv(num_weeks, num_floors):
     """
     Generates a csv file where data from `generate_weeks()` is written to file
     """
-    from poetry_version import extract
-    with open(f'../pxsim/data/w{num_weeks}_f{num_floors}_{extract(__file__)}.csv', 'w') as f:
+    import importlib.metadata
+    with open(f'../pxsim/data/w{num_weeks}_f{num_floors}_{importlib.metadata.version("pxsim")}.csv', 'w') as f:
         f.write('timestamp,startfloor,endfloor\n')
         for entry in generate_weeks(num_weeks, num_floors):
             f.write(f'{entry[0].isoformat()}, {entry[1]}, {entry[2]}\n')
