@@ -1,14 +1,6 @@
-import torch
-
+import gymnasium as gym
 import numpy as np
 
-import gym
-from gym import spaces
-import numpy as np
-import pygame
-
-
-from matplotlib import pyplot as plt
 from elsim.elevator_simulator import ElevatorSimulator
 
 # TODO adjust system enviroment to work with elevator_simulator
@@ -60,20 +52,20 @@ class ElevatorEnvironment(gym.Env):
         self.simulator.init_simulation("../pxsim/data/test_data.csv")
 
         # Define observation space
-        self.observation_space = spaces.Dict({
-            "elevator": spaces.Dict({
-                "position": spaces.Box(low=0, high=self.episode_num_floors, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-                "speed": spaces.Box(low=-self.max_speed, high=self.max_speed, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-                "doors_state": spaces.Box(low=0, high=1, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-                "buttons": spaces.MultiBinary((self.episode_num_elevators, self.episode_num_floors), seed=self._get_rnd_int())
+        self.observation_space = gym.spaces.Dict({
+            "elevator": gym.spaces.Dict({
+                "position": gym.spaces.Box(low=0, high=self.episode_num_floors, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
+                "speed": gym.spaces.Box(low=-self.max_speed, high=self.max_speed, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
+                "doors_state": gym.spaces.Box(low=0, high=1, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
+                "buttons": gym.spaces.MultiBinary((self.episode_num_elevators, self.episode_num_floors), seed=self._get_rnd_int())
             }),
-            "floors": spaces.MultiBinary((self.episode_num_floors, 2), seed=self._get_rnd_int())
+            "floors": gym.spaces.MultiBinary((self.episode_num_floors, 2), seed=self._get_rnd_int())
         })
 
         # Define action space
-        self.action_space = spaces.Dict({
-            "target": spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
-            "next_movement": spaces.MultiDiscrete([3] * self.episode_num_elevators)
+        self.action_space = gym.spaces.Dict({
+            "target": gym.spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
+            "next_movement": gym.spaces.MultiDiscrete([3] * self.episode_num_elevators)
         })
 
         pass

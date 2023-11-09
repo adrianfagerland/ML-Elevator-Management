@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.13"
-# numpy = "^1.26.1"
+numpy = "^1.26.1"
 # torch = [
 #   { version = "^2.1.0", source = "torch_cpu"},
 # ]
