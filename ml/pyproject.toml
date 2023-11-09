@@ -14,7 +14,7 @@ numpy = "^1.26.1"
 # tensordict = "^0.2.1"
 # matplotlib = "^3.8.1"
 # torchrl = "^0.2.1"
-elsim = {path = "../elsim"}
+elsim = { path = "../elsim"}
 # gymnasium = "^0.26.2"
 # pygame = "^2.5.2"
 gymnasium = "^0.29.1"

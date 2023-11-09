@@ -5,6 +5,14 @@ from elsim.elevator_simulator import ElevatorSimulator
 
 # TODO adjust system enviroment to work with elevator_simulator
 
+# gym.register(
+#     id="Elevator-v0",
+#     entry_point="enviroment_gym:ElevatorEnvironment",
+#     kwargs={'num_floors': 10, "num_elevators": 4}
+# )
+# env = gym.make('Elevator-v0')
+# obs = env.reset()
+
 
 class ElevatorEnvironment(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 4}
@@ -14,8 +22,7 @@ class ElevatorEnvironment(gym.Env):
                  num_floors: tuple[int, int] | int,
                  render_mode=None,
                  max_speed=2,
-                 max_acceleration=0.4,
-                 seed=0):
+                 max_acceleration=0.4):
 
         self.dtype = np.float32
         # Handle the possible two ways to input the parameters of the enviroment: fixed (#elevators/#floors) or a range
@@ -29,13 +36,13 @@ class ElevatorEnvironment(gym.Env):
         else:
             self.num_floors_range = num_floors
 
-        self.r = np.random.Generator(np.random.PCG64(seed))
 
         # Parameters that do not change troughout episodes
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
 
-    def reset(self):
+    def reset(self, seed = 0) -> tuple:
+        self.r = np.random.Generator(np.random.PCG64(seed))
         # Initializes everything
 
         # 1. choose num_elevators and num_floors for this episode
@@ -68,7 +75,8 @@ class ElevatorEnvironment(gym.Env):
             "next_movement": gym.spaces.MultiDiscrete([3] * self.episode_num_elevators)
         })
 
-        pass
+        # TODO return initial observation
+        return (None, None, None, None)
 
     def _get_rnd_int(self):
         return int(self.r.integers(0, int(1e6)))
