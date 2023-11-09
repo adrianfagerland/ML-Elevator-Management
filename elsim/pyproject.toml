@@ -1,12 +1,15 @@
 [tool.poetry]
 name = "elsim"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["Adrian Fagerland <adrian.fagerland@hotmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.13
+python = ">=3.10, <3.13"
+pytest = "^7.4.2"
+numpy = "^1.26.1"
+typing-extensions = "^4.8.0"
 
 
 [build-system]
