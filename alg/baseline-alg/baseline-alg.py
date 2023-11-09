@@ -12,6 +12,46 @@ from vis import elev_vis
 #Position where to go next (Array: [6,2,5,6,0])
 
 def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration):
+
+    res = scheduler_nearest_car_helper(elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration)
+    print("A", res)
+
+    #depress outside buttons
+    new_buttons_out = []
+    for bo in buttons_out:
+        s = bo
+        s["up"] = False
+        s["down"] = False
+        new_buttons_out.append(s)
+
+    #modify buttons insde
+
+    #set has seve array inside the button array
+    new_buttons_in = buttons_in.copy()
+    for t_idx, ts in enumerate(res["to_serve"]):
+        for m in ts:
+            new_buttons_in[t_idx][m] = True
+
+
+    for elev_idx, bi in enumerate(buttons_in):
+
+        #turn of the current floor
+        elev_current_floor = res["target"][elev_idx]
+        new_buttons_in[elev_idx][elev_current_floor] = False
+
+
+
+    new_speed = [0] * len(elev_positions)
+
+    next = next_move_simulation= scheduler_nearest_car_helper(res["target"], new_buttons_out, new_buttons_in, new_speed, max_acceleration)
+
+    directions = [-1] * len(next["target"])
+    for i in range(0, len(next["target"])):
+        directions[i] = next["target"][i] - res["target"][i]
+
+    return {"target": res, "next_direction": directions}
+
+def scheduler_nearest_car_helper(elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration):
     calls = []
     N = len(buttons_out)
 
@@ -69,7 +109,8 @@ def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, m
 
         call["elevator"] = max_elevator
 
-    result = []
+    target_result = []
+    to_serve_result = []
 
     #calculate the target floor for each elevator
     for elev_it, elev_pos in enumerate(elev_positions):
@@ -88,6 +129,7 @@ def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, m
 
         #if elevator has no call, then stopp at nearest one you can stopp at
 
+        to_serve_result.append(to_serve)
         target = get_nearest_floor_to_serve(to_serve, elev_pos, elev_it, elev_speed, max_acceleration)
 
         if(target == -1):
@@ -109,15 +151,12 @@ def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, m
                 stopps_in_dir = range(0, N)
                 target = get_nearest_floor_to_serve(stopps_in_dir, elev_pos, elev_it, elev_speed, max_acceleration)
 
-        result.append(target)
+        target_result.append(target)
 
-    print(result)
-
-
+    print(target_result)
 
 
-
-    return result
+    return {"target": target_result, "to_serve": to_serve_result}
 
 def get_nearest_floor_to_serve(calling_floors, elev_pos, elev_it, elev_speed, max_acceleration):
     #check which floor the elevator has to serve is the nearet one and can be served
@@ -221,5 +260,5 @@ if 3 in current_tests:
     }
 
     elev_vis.print_elevator(test3["elev_pos"], test3["buttons_out"],test3["buttons_in"], test3["elev_speed"])
-    scheduler_nearest_car(test3["elev_pos"], test3["buttons_out"], test3["buttons_in"], test3["elev_speed"], 1000)
+    t = scheduler_nearest_car(test3["elev_pos"], test3["buttons_out"], test3["buttons_in"], test3["elev_speed"], 1000)
 
