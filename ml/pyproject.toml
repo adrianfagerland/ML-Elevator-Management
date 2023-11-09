@@ -20,15 +20,15 @@ elsim = {path = "../elsim"}
 gymnasium = "^0.29.1"
 
 
-[[tool.poetry.source]]
-name = "torch_cpu"
-url = "https://download.pytorch.org/whl/cpu"
-priority = "supplemental"
+# [[tool.poetry.source]]
+# name = "torch_cpu"
+# url = "https://download.pytorch.org/whl/cpu"
+# priority = "supplemental"
 
 
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "primary"
+# [[tool.poetry.source]]
+# name = "PyPI"
+# priority = "primary"
 
 [build-system]
 requires = ["poetry-core"]
