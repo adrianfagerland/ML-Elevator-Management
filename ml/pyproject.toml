@@ -1,22 +1,23 @@
 [tool.poetry]
 name = "ml"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["Adrian Fagerland <adrian.fagerland@hotmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.13"
-numpy = "^1.26.1"
-torch = [
-  { version = "^2.1.0", source = "torch_cpu"},
-]
-tensordict = "^0.2.1"
-matplotlib = "^3.8.1"
-torchrl = "^0.2.1"
+# numpy = "^1.26.1"
+# torch = [
+#   { version = "^2.1.0", source = "torch_cpu"},
+# ]
+# tensordict = "^0.2.1"
+# matplotlib = "^3.8.1"
+# torchrl = "^0.2.1"
 elsim = {path = "../elsim"}
-gym = "^0.26.2"
-pygame = "^2.5.2"
+# gymnasium = "^0.26.2"
+# pygame = "^2.5.2"
+gymnasium = "^0.29.1"
 
 
 [[tool.poetry.source]]
