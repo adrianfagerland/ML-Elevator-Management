@@ -47,7 +47,11 @@ def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, m
 
     directions = [-1] * len(next["target"])
     for i in range(0, len(next["target"])):
-        directions[i] = next["target"][i] - res["target"][i]
+        d = next["target"][i] - res["target"][i]
+
+        #normalize direction
+        d = d / abs(d)  # -2 -> -1
+        directions[i] = d
 
     return {"target": res, "next_direction": directions}
 
