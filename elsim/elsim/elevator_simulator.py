@@ -1,13 +1,14 @@
-import time
-from typing import Callable
-from random import Random
 import csv
+import time
 from datetime import datetime
+from random import Random
+from typing import Callable
 
-from numpy import infty as INFTY
-from elsim.elevator import Elevator
 import numpy as np
 from numpy import exp
+from numpy import infty as INFTY
+
+from elsim.elevator import Elevator
 
 
 class ElevatorSimulator:
@@ -43,6 +44,7 @@ class ElevatorSimulator:
         self.max_acc = acceleration_elevator
         self.max_load = max_load
         self.random_init = random_init  # currently ignored and 0 is used :TODO
+        self.done = False
 
         self.r = Random(random_seed)
 
@@ -102,11 +104,35 @@ class ElevatorSimulator:
         self.world_time = 0
         self.next_arrival_index = 0
 
+    def return_observations(self, step_size):
+        elevator_doors = np.array([elevator.get_doors_open() for elevator in self.elevators])
+        elevator_positions_speed = np.array([(elevator.get_position(), elevator.get_speed())
+                                            for elevator in self.elevators])
+        elevator_buttons = np.array(self.elevator_buttons_list)
+        elevator_target = np.array([elevator.get_target_position() for elevator in self.elevators])
+
+        floor_buttons = np.array(list(zip(self.floor_buttons_pressed_up, self.floor_buttons_pressed_down)))
+
+        loss = self.loss_calculation(step_size)
+
+        # done = False  # TODO write code that determine if done
+
+        observations = {
+            "position": elevator_positions_speed[:, 0],
+            "speed": elevator_positions_speed[:, 1],
+            "doors_state": elevator_doors,
+            "buttons": elevator_buttons,
+            "target": elevator_target,
+            "floors": floor_buttons,
+        }
+        return (observations, -loss, self.done, None)
+
     def reset_simulation(self):
         """ Resets the simulation by bringing simulation back into starting state
         """
         # TODO
-        pass
+        self.done = False
+        return self.return_observations(step_size=0)
 
     def loss_calculation(self, time_step: float) -> float:
         """ Calculates the loss afte calling the step() function for the current step()
@@ -148,9 +174,13 @@ class ElevatorSimulator:
 
         return ind_loss
 
-    def step(self, actions):
+    def step(self, actions) -> tuple:
 
         # TODO: Execute actions
+        targets = actions['target']
+        next_movements = actions['to_serve']
+        for i, elevator in enumerate(self.elevators):
+            elevator.set_target_position(targets[i], next_movements[i])
 
         # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
@@ -167,11 +197,12 @@ class ElevatorSimulator:
         next_elevator_index, next_elevator_time = sorted(elevator_arrival_times, key=lambda x: x[1])[0]
 
         # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
-        if (min(next_arrival, next_elevator_time) >= INFTY):
+        # if (min(next_arrival, next_elevator_time) >= INFTY):
+        if (next_arrival >= INFTY):
             # break
             # TODO: discuss how to handle run out of data in the context of learning
-
-            return
+            self.done = True
+            # raise NotImplementedError
 
         if (next_arrival < self.world_time + next_elevator_time):
             # update the time of the simulation and remember how big the interval was (for the loss function)
@@ -267,22 +298,7 @@ class ElevatorSimulator:
         # Arrivals handled
 
         # return the data for the observations
-        elevator_doors = np.array([elevator.get_doors_open() for elevator in self.elevators])
-        elevator_positions_speed = np.array([(elevator.get_position(), elevator.get_speed())
-                                            for elevator in self.elevators])
-        elevator_buttons = np.array(self.elevator_buttons_list)
-        elevator_target = np.array([elevator.get_target_position() for elevator in self.elevators])
-
-        floor_buttons = np.array(zip(self.floor_buttons_pressed_up, self.floor_buttons_pressed_down))
-
-        loss = self.loss_calculation(step_size)
-
-        # Return current state
-        return {"elevator_doors": elevator_doors,
-                "elevator_positions_speed": elevator_positions_speed,
-                "elevator_buttons": elevator_buttons,
-                "elevator_target": elevator_target,
-                "floor_buttons": floor_buttons}
+        return self.return_observations(step_size=step_size)
 
 
 if __name__ == "__main__":
