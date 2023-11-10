@@ -1,5 +1,6 @@
 from ml.api import ElevatorEnvironment
 from ml.scheduler import Scheduler
+from vis.console import print_elevator
 
 
 class Runner():
@@ -16,8 +17,13 @@ class Runner():
                                        max_acceleration=max_acceleration)
         self.observations, self.error, self.done, self.info = self.api.reset(seed=0)
 
-    def run(self):
+    def run(self, visualize=False):
         while not self.done:
+            if visualize:
+                print_elevator(self.observations["position"],
+                               self.observations["floors"],
+                               self.observations["buttons"],
+                               self.observations["speed"])
             action = self.algorithm.decide(self.observations, self.error)
             self.observations, reward, self.done, self.info = self.api.step(action)
             self.error += reward

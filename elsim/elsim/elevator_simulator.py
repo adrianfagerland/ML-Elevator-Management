@@ -174,7 +174,7 @@ class ElevatorSimulator:
 
         return ind_loss
 
-    def step(self, actions) -> dict:
+    def step(self, actions) -> tuple:
 
         # TODO: Execute actions
         targets = actions['target']
@@ -197,7 +197,8 @@ class ElevatorSimulator:
         next_elevator_index, next_elevator_time = sorted(elevator_arrival_times, key=lambda x: x[1])[0]
 
         # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
-        if (min(next_arrival, next_elevator_time) >= INFTY):
+        # if (min(next_arrival, next_elevator_time) >= INFTY):
+        if (next_arrival >= INFTY):
             # break
             # TODO: discuss how to handle run out of data in the context of learning
             self.done = True

@@ -44,9 +44,9 @@ def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, m
             new_buttons_in[t_idx][m] = True
 
     for elev_idx, bi in enumerate(buttons_in):
-
         # turn of the current floor
-        elev_current_floor = int(res["target"][elev_idx]) # TODO FIX, added int to make it run
+        # TODO FIX, added int() around "res["target"][elev_idx]" to make it run
+        elev_current_floor = res["target"][elev_idx]
         new_buttons_in[elev_idx][elev_current_floor] = False
 
     new_speed = [0] * len(elev_positions)
