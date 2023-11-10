@@ -24,12 +24,12 @@ files = [
 
 [[package]]
 name = "elsim"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 optional = false
 python-versions = ">=3.10, <3.13"
 files = []
-develop = false
+develop = true
 
 [package.dependencies]
 numpy = "^1.26.1"
@@ -107,6 +107,24 @@ files = [
 ]
 
 [[package]]
+name = "ml"
+version = "1.0.0"
+description = ""
+optional = false
+python-versions = ">=3.10, <3.13"
+files = []
+develop = true
+
+[package.dependencies]
+elsim = {path = "../elsim"}
+gymnasium = "^0.29.1"
+numpy = "^1.26.1"
+
+[package.source]
+type = "directory"
+url = "../ml"
+
+[[package]]
 name = "numpy"
 version = "1.26.1"
 description = "Fundamental package for array computing in Python"
@@ -174,6 +192,22 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
+name = "pxsim"
+version = "1.0.1"
+description = ""
+optional = false
+python-versions = ">=3.10, <3.13"
+files = []
+develop = true
+
+[package.dependencies]
+numpy = "^1.26.1"
+
+[package.source]
+type = "directory"
+url = "../pxsim"
+
+[[package]]
 name = "pytest"
 version = "7.4.3"
 description = "pytest: simple powerful testing with Python"
@@ -217,7 +251,25 @@ files = [
     {file = "typing_extensions-4.8.0.tar.gz", hash = "sha256:df8e4339e9cb77357558cbdbceca33c303714cf861d1eef15e1070055ae8b7ef"},
 ]
 
+[[package]]
+name = "vis"
+version = "1.0.0"
+description = ""
+optional = false
+python-versions = ">=3.10, <3.13"
+files = []
+develop = true
+
+[package.dependencies]
+elsim = {path = "../elsim", develop = true}
+ml = {path = "../ml", develop = true}
+pxsim = {path = "../pxsim", develop = true}
+
+[package.source]
+type = "directory"
+url = "../vis"
+
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "a4def77ff1128b75892b1936c0d42a283414e111e5dcc6cc85ffee8c9677830e"
+content-hash = "4237a526aa7e60471888d6437beeeff7b7a48c5e00f9650e591f218bb5210cb8"
