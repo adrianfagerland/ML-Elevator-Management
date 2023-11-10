@@ -102,6 +102,33 @@ class ElevatorSimulator:
         self.world_time = 0
         self.next_arrival_index = 0
 
+<<<<<<< Updated upstream
+=======
+    def return_observations(self, step_size):
+        elevator_doors = np.array([elevator.get_doors_open() for elevator in self.elevators])
+        elevator_positions_speed = np.array([(elevator.get_position(), elevator.get_speed())
+                                            for elevator in self.elevators])
+        elevator_buttons = np.array(self.elevator_buttons_list)
+        elevator_target = np.array([elevator.get_target_position() for elevator in self.elevators])
+
+        floor_buttons = np.array(list(zip(self.floor_buttons_pressed_up, self.floor_buttons_pressed_down)))
+
+        loss = self.loss_calculation(step_size)
+
+        # done = False  # TODO write code that determine if done
+
+        observations = {
+            "position": elevator_positions_speed[:, 0],
+            "speed": elevator_positions_speed[:, 1],
+            "doors_state": elevator_doors,
+            "buttons": elevator_buttons,
+            "target": elevator_target,
+            "floors": floor_buttons,
+            "souls_on_board": np.array([len(riding_list) for riding_list in self.elevator_riding_list])
+        }
+        return (observations, -loss, self.done, None)
+
+>>>>>>> Stashed changes
     def reset_simulation(self):
         """ Resets the simulation by bringing simulation back into starting state
         """
@@ -208,7 +235,7 @@ class ElevatorSimulator:
             arrived_floor = int(arrived_elevator.trajectory_list[0].position)
 
             # 1. do people want to leave?
-            self.elevator_riding_list[next_elevator_index] = list(filter(lambda x: x[2] == arrived_floor,
+            self.elevator_riding_list[next_elevator_index] = list(filter(lambda x: x[2] != arrived_floor,
                                                                          self.elevator_riding_list[next_elevator_index]))
 
             # depending on the direction of the elevator: update floors buttons by disabling them
@@ -257,10 +284,8 @@ class ElevatorSimulator:
                 for start_time, end_floor in elevator_join_list:
                     self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
-            pass
-
             # update buttons in elevator
-            elevator_target_list = [x[1] for x in self.elevator_riding_list[next_elevator_index]]
+            elevator_target_list = [x[2] for x in self.elevator_riding_list[next_elevator_index]]
             self.elevator_buttons_list[next_elevator_index] = [1 if i in elevator_target_list else 0
                                                                for i in range(0, self.num_floors)]
 
