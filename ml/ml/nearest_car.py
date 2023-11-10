@@ -18,27 +18,21 @@ class NearestCar(Scheduler):
     def __init__(self, num_elevators, num_floors, max_speed, max_acceleration) -> None:
         super().__init__(num_elevators, num_floors, max_speed, max_acceleration)
 
-    def decide(self, observations, error, info):
-        elev_positions = observations["elevator"]["position"]
-        buttons_out = observations["floors"]
-        buttons_in = observations["elevator"]["buttons"]
-        elev_speed = observations["elevator"]["speed"]
-        result = scheduler_nearest_car(elev_positions=elev_positions, buttons_out=buttons_out,
-                                       buttons_in=buttons_in, elev_speed=elev_speed, max_acceleration=self.max_acceleration)
-        return {"target": result, "next_movement": np.zeros(self.num_elevators)}
+    def decide(self, observations, error):
+        return scheduler_nearest_car(elev_positions=observations["position"], buttons_out=observations["floors"],
+                                     buttons_in=observations["buttons"], elev_speed=observations["speed"], max_acceleration=self.max_acceleration)
 
 
 def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration):
 
     res = scheduler_nearest_car_helper(elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration)
-    print("A", res)
 
     # depress outside buttons
     new_buttons_out = []
     for bo in buttons_out:
         s = bo
-        s["up"] = False
-        s["down"] = False
+        s[0] = False
+        s[1] = False
         new_buttons_out.append(s)
 
     # modify buttons insde
@@ -52,12 +46,12 @@ def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, m
     for elev_idx, bi in enumerate(buttons_in):
 
         # turn of the current floor
-        elev_current_floor = res["target"][elev_idx]
+        elev_current_floor = int(res["target"][elev_idx]) # TODO FIX, added int to make it run
         new_buttons_in[elev_idx][elev_current_floor] = False
 
     new_speed = [0] * len(elev_positions)
 
-    next = next_move_simulation = scheduler_nearest_car_helper(
+    next = scheduler_nearest_car_helper(
         res["target"], new_buttons_out, new_buttons_in, new_speed, max_acceleration)
 
     directions = [-1] * len(next["target"])
@@ -65,22 +59,23 @@ def scheduler_nearest_car(elev_positions, buttons_out, buttons_in, elev_speed, m
         d = next["target"][i] - res["target"][i]
 
         # normalize direction
-        d = d / abs(d)  # -2 -> -1
+        if d != 0:
+            d = d / abs(d)  # -2 -> -1
         directions[i] = d
 
-    return {"target": res, "next_direction": directions}
+    return {"target": res["target"], "to_serve": directions}
 
 
 def scheduler_nearest_car_helper(elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration):
     calls = []
-    N = len(buttons_out)
+    N = len(buttons_out) - 1
 
     # create an algorithm specific format
     for floor_it, b in enumerate(buttons_out):
-        if b["up"] == True:
+        if b[0] == True:
             calls.append({"type": "up", "floor": floor_it, "elevator": None})
 
-        if b["down"] == True:
+        if b[1] == True:
             calls.append({"type": "down", "floor": floor_it, "elevator": None})
 
     for call in calls:
@@ -172,8 +167,6 @@ def scheduler_nearest_car_helper(elev_positions, buttons_out, buttons_in, elev_s
 
         target_result.append(target)
 
-    print(target_result)
-
     return {"target": target_result, "to_serve": to_serve_result}
 
 
@@ -222,58 +215,58 @@ def can_serve(call_floor, elev_pos, elev_speed, max_acceleration):
     return True
 
 
-# TESTS
-current_tests = []
+# # TESTS
+# current_tests = []
 
-if 1 in current_tests:
-    test1 = {
-        "elev_pos": [1, 3],
-        "elev_speed": [4.6, -3.2],
-        "buttons_out": [{"up": True, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "up_time": "Time", "down": True, "down_time": "Time"},
-                        {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "True": "Time", "down": False, "down_time": "Time"},
-                        ],
-        "buttons_in": [[False, False, False, True], [False, True, False, False]]
-    }
+# if 1 in current_tests:
+#     test1 = {
+#         "elev_pos": [1, 3],
+#         "elev_speed": [4.6, -3.2],
+#         "buttons_out": [{"up": True, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "up_time": "Time", "down": True, "down_time": "Time"},
+#                         {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "True": "Time", "down": False, "down_time": "Time"},
+#                         ],
+#         "buttons_in": [[False, False, False, True], [False, True, False, False]]
+#     }
 
-    elev_vis.print_elevator(test1["elev_pos"], test1["buttons_out"], test1["buttons_in"], test1["elev_speed"])
-    t = scheduler_nearest_car(test1["elev_pos"], test1["buttons_out"], test1["buttons_in"], test1["elev_speed"], 1000)
-    assert t == [3, 1]
-    print("--------------------------------")
+#     elev_vis.print_elevator(test1["elev_pos"], test1["buttons_out"], test1["buttons_in"], test1["elev_speed"])
+#     t = scheduler_nearest_car(test1["elev_pos"], test1["buttons_out"], test1["buttons_in"], test1["elev_speed"], 1000)
+#     assert t == [3, 1]
+#     print("--------------------------------")
 
-if 2 in current_tests:
-    test2 = {
-        "elev_pos": [2],
-        "elev_speed": [-1],
-        "buttons_out": [{"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "True": "Time", "down": False, "down_time": "Time"},
-                        ],
-        "buttons_in": [[False, False, False, False, False]]
-    }
+# if 2 in current_tests:
+#     test2 = {
+#         "elev_pos": [2],
+#         "elev_speed": [-1],
+#         "buttons_out": [{"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "True": "Time", "down": False, "down_time": "Time"},
+#                         ],
+#         "buttons_in": [[False, False, False, False, False]]
+#     }
 
-    elev_vis.print_elevator(test2["elev_pos"], test2["buttons_out"], test2["buttons_in"], test2["elev_speed"])
-    t = scheduler_nearest_car(test2["elev_pos"], test2["buttons_out"], test2["buttons_in"], test2["elev_speed"], 1000)
-    print("Test 2", t)
-    assert t == [1]
-    print("--------------------------------")
+#     elev_vis.print_elevator(test2["elev_pos"], test2["buttons_out"], test2["buttons_in"], test2["elev_speed"])
+#     t = scheduler_nearest_car(test2["elev_pos"], test2["buttons_out"], test2["buttons_in"], test2["elev_speed"], 1000)
+#     print("Test 2", t)
+#     assert t == [1]
+#     print("--------------------------------")
 
-if 3 in current_tests:
-    test3 = {
-        "elev_pos": [2, 0, 3, 1],
-        "elev_speed": [2, 2, 0, 3],
-        "buttons_out": [{"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": True, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
-                        {"up": False, "True": "Time", "down": False, "down_time": "Time"},
-                        ],
-        "buttons_in": [[False, False, False, False, False], [False, False, True, False, False],
-                       [False, False, False, False, True], [False, False, True, True, False]]
-    }
+# if 3 in current_tests:
+#     test3 = {
+#         "elev_pos": [2, 0, 3, 1],
+#         "elev_speed": [2, 2, 0, 3],
+#         "buttons_out": [{"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": True, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "up_time": "Time", "down": False, "down_time": "Time"},
+#                         {"up": False, "True": "Time", "down": False, "down_time": "Time"},
+#                         ],
+#         "buttons_in": [[False, False, False, False, False], [False, False, True, False, False],
+#                        [False, False, False, False, True], [False, False, True, True, False]]
+#     }
 
-    elev_vis.print_elevator(test3["elev_pos"], test3["buttons_out"], test3["buttons_in"], test3["elev_speed"])
-    t = scheduler_nearest_car(test3["elev_pos"], test3["buttons_out"], test3["buttons_in"], test3["elev_speed"], 1000)
+#     elev_vis.print_elevator(test3["elev_pos"], test3["buttons_out"], test3["buttons_in"], test3["elev_speed"])
+#     t = scheduler_nearest_car(test3["elev_pos"], test3["buttons_out"], test3["buttons_in"], test3["elev_speed"], 1000)

@@ -8,9 +8,9 @@
             "name": "Python: Simulator",
             "type": "python",
             "request": "launch",
-            "module": "elsim.elevator_simulator",
+            "module": "eval.main",
             //"justMyCode": true,
-            "cwd":"${workspaceFolder}/elsim"
+            "cwd":"${workspaceFolder}/eval"
         }
     ]
 }

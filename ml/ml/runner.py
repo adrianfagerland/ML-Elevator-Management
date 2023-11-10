@@ -18,7 +18,7 @@ class Runner():
 
     def run(self):
         while not self.done:
-            action = self.algorithm.decide(self.observations, self.error, self.info)
+            action = self.algorithm.decide(self.observations, self.error)
             self.observations, reward, self.done, self.info = self.api.step(action)
             self.error += reward
         return self.error

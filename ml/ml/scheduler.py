@@ -11,5 +11,5 @@ class Scheduler(ABC):
         pass
 
     @abstractmethod
-    def decide(self, observations, error, info) -> dict:
+    def decide(self, observations, error) -> dict:
         pass
