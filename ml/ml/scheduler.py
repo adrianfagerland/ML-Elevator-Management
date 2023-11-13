@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import numpy as np
 
 
 class Scheduler(ABC):
@@ -11,5 +12,5 @@ class Scheduler(ABC):
         pass
 
     @abstractmethod
-    def decide(self, observations, error) -> dict:
+    def decide(self, observations, error):
         pass

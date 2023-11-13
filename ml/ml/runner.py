@@ -3,10 +3,11 @@ import time
 from ml.api import ElevatorEnvironment
 from ml.scheduler import Scheduler
 from vis.console import print_elevator
+from ml.nearest_car import NearestCar
 
 
 class Runner():
-    def __init__(self, algoritm, num_elevators, num_floors, max_speed, max_acceleration, seed) -> None:
+    def __init__(self, algoritm, num_elevators, num_floors, max_speed=2, max_acceleration=0.4, seed=0) -> None:
         self.algorithm: Scheduler = algoritm(
             num_elevators=num_elevators,
             num_floors=num_floors,
@@ -17,18 +18,50 @@ class Runner():
                                        num_floors=num_floors,
                                        max_speed=max_speed,
                                        max_acceleration=max_acceleration)
-        self.observations, self.error, self.done, self.info = self.api.reset(seed=0)
+        self.observations, self.info = self.api.reset(seed=0)
+        self.error = 0
+        self.done = False
+        self.truncated = False
+        self.needs_decision = True
 
-    def run(self, visualize=False):
+    def run(self, visualize=False, step_size=0.1):
+
+        # if visualize is True then step size cannot be none
+        assert not visualize or step_size is not None
+        print_elevator(self.observations["position"],
+                       self.observations["floors"],
+                       self.observations["buttons"],
+                       self.observations["speed"],
+                       self.observations["elevators_occupancy"],
+                       setup=True)
+
         while not self.done:
             if visualize:
                 print_elevator(self.observations["position"],
                                self.observations["floors"],
                                self.observations["buttons"],
                                self.observations["speed"],
-                               self.observations["souls_on_board"])
-                time.sleep(0.5)
-            action = self.algorithm.decide(self.observations, self.error)
-            self.observations, reward, self.done, self.info = self.api.step(action)
+                               self.observations["elevators_occupancy"])
+
+                time.sleep(step_size)
+            # If needs decision is true => action to None therefore no elevator will have its target changed
+            if (self.needs_decision):
+                action = self.algorithm.decide(self.observations, self.error)
+            else:
+                action = None
+            # If visualize is true then we need to also pass step max_step_size
+            if (visualize):
+                self.observations, reward, self.done, self.truncated, self.info = self.api.step(
+                    action, max_step_size=step_size)
+            else:
+                self.observations, reward, self.done, self.truncated, self.info = self.api.step(action)
+
+            self.needs_decision = self.info["needs_decision"]
             self.error += reward
+
         return self.error
+
+
+if __name__ == "__main__":
+    r = Runner(NearestCar, 5, 10, seed=0)
+    r.run(visualize=True)

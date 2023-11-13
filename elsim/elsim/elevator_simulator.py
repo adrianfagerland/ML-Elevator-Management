@@ -127,7 +127,7 @@ class ElevatorSimulator:
             "elevators_occupancy": occupancy_list
         }
         #       observation   reward  terminated? truncated? info
-        return (observations, -loss,  self.done,  False,     {})
+        return (observations, -loss,  self.done,  False,     {"needs_decision": True})
 
     def reset_simulation(self):
         """ Resets the simulation by bringing simulation back into starting state
@@ -176,13 +176,14 @@ class ElevatorSimulator:
 
         return ind_loss
 
-    def step(self, actions) -> tuple:
+    def step(self, actions, max_step_size=None) -> tuple:
 
-        # TODO: Execute actions
-        targets = actions['target']
-        next_movements = actions['to_serve']
-        for i, elevator in enumerate(self.elevators):
-            elevator.set_target_position(targets[i], next_movements[i])
+        # if action is defined => execute the actions by sending them to the elevators
+        if (actions is not None):
+            targets = actions['target']
+            next_movements = actions['to_serve']
+            for i, elevator in enumerate(self.elevators):
+                elevator.set_target_position(targets[i], next_movements[i])
 
         # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
@@ -205,6 +206,15 @@ class ElevatorSimulator:
             # TODO: discuss how to handle run out of data in the context of learning
             self.done = True
             # raise NotImplementedError
+
+        # Test if max_step_size is less than the next event, then just advance simulation max_step_size
+        if (max_step_size is not None and max_step_size < next_elevator_time and max_step_size < next_arrival - self.world_time):
+            for elevator in self.elevators:
+                elevator.advance_simulation(max_step_size)
+            # generate observation and add to information "needs_decision" flag
+            observation, reward, terminated, truncated, info = self.return_observations(step_size=max_step_size)
+            info["needs_decision"] = False
+            return observation, reward, terminated, truncated, info
 
         if (next_arrival < self.world_time + next_elevator_time):
             # update the time of the simulation and remember how big the interval was (for the loss function)
