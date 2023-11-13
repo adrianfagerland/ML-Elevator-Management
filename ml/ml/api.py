@@ -1,17 +1,10 @@
 import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 
 from elsim.elevator_simulator import ElevatorSimulator
 
 # TODO adjust system enviroment to work with elevator_simulator
-
-# gym.register(
-#     id="Elevator-v0",
-#     entry_point="enviroment_gym:ElevatorEnvironment",
-#     kwargs={'num_floors': 10, "num_elevators": 4}
-# )
-# env = gym.make('Elevator-v0')
-# obs = env.reset()
 
 
 class ElevatorEnvironment(gym.Env):
@@ -22,8 +15,8 @@ class ElevatorEnvironment(gym.Env):
                  num_floors: tuple[int, int] | int,
                  render_mode=None,
                  max_speed=2,
-                 max_acceleration=0.4):
-
+                 max_acceleration=0.4,
+                 max_occupancy=7):
         self.dtype = np.float32
         # Handle the possible two ways to input the parameters of the enviroment: fixed (#elevators/#floors) or a range
         if (type(num_elevators) == int):
@@ -39,8 +32,14 @@ class ElevatorEnvironment(gym.Env):
         # Parameters that do not change troughout episodes
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
+        self.max_occupancy = max_occupancy
+        # empty spaces
+        # self.observation_space = spaces.Space()
+        # self.action_space = spaces.Space()
+        # To have valid action/observation spaces
+        self.reset()
 
-    def reset(self, seed=0):
+    def reset(self, seed=0, options={}):
         self.r = np.random.Generator(np.random.PCG64(seed))
         # Initializes everything
 
@@ -52,28 +51,36 @@ class ElevatorEnvironment(gym.Env):
                                                               num_floors=self.episode_num_floors,
                                                               random_seed=0,
                                                               speed_elevator=self.max_speed,
-                                                              acceleration_elevator=self.max_acceleration)
+                                                              acceleration_elevator=self.max_acceleration,
+                                                              max_occupancy=self.max_occupancy)
 
         # generate the arrival data or read in trough path
-        self.simulator.init_simulation("../pxsim/data/test_data.csv")
+        self.simulator.init_simulation("pxsim/data/test_data.csv")
 
         # Define observation space
-        self.observation_space = gym.spaces.Dict({
-            "position": gym.spaces.Box(low=0, high=self.episode_num_floors, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-            "speed": gym.spaces.Box(low=-self.max_speed, high=self.max_speed, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-            "doors_state": gym.spaces.Box(low=0, high=1, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-            "buttons": gym.spaces.MultiBinary((self.episode_num_elevators, self.episode_num_floors), seed=self._get_rnd_int()),
-            "floors": gym.spaces.MultiBinary((self.episode_num_floors, 2), seed=self._get_rnd_int())
+        self.observation_space = spaces.Dict({
+            "position": spaces.Box(low=0, high=self.episode_num_floors, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
+            "speed": spaces.Box(low=-self.max_speed, high=self.max_speed, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
+            "doors_state": spaces.Box(low=0, high=1, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
+            "buttons": spaces.MultiBinary((self.episode_num_elevators, self.episode_num_floors), seed=self._get_rnd_int()),
+            "floors": spaces.MultiBinary((self.episode_num_floors, 2), seed=self._get_rnd_int()),
+            "elevators_occupancy": spaces.MultiDiscrete([self.max_occupancy] * self.episode_num_elevators, seed=self._get_rnd_int()),
+            "target": spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
         })
 
         # Define action space
-        self.action_space = gym.spaces.Dict({
-            "target": gym.spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
-            "to_serve": gym.spaces.MultiDiscrete([3] * self.episode_num_elevators)
+        self.action_space = spaces.MultiDiscrete(
+            [self.episode_num_floors, 3] * self.episode_num_elevators, seed=self._get_rnd_int())
+        # Action space cannot be of type dict? for stable baseline3 learning algorithm different shape but contains the same information
+        """
+        self.action_space = spaces.Dict(spaces={
+            "target": spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
+            "to_serve": spaces.MultiDiscrete([3] * self.episode_num_elevators)
         })
-
-        # TODO return initial observation
-        return self.simulator.reset_simulation()
+        """
+        # return initial observation and info
+        observations, _, _, _, info = self.simulator.reset_simulation()
+        return (observations, info)
 
     def _get_rnd_int(self):
         return int(self.r.integers(0, int(1e6)))
@@ -87,9 +94,22 @@ class ElevatorEnvironment(gym.Env):
         Returns:
             [tensordict]: [the tensordict that contains the observations the reward and if the simulation is finished.]
         """
-        # modify action (next_movement) from [0,2] to [-1,1]
-        # action['next_movement'] -= 1
-        return self.simulator.step(action)
+        # modify action list to dictionary
+        # and shift the to_serve value to be in range [-1,1] instead of [0,2]
+        action_dict = {
+            "target": action[::2],
+            "to_serve": action[1::2] - 1
+        }
+        return self.simulator.step(action_dict)
 
     def _set_seed(self, seed):
         pass
+
+# Register the enviroment
+
+
+# gymnasium.envs.registration.load_plugin_envs
+gym.register(
+    id="Elevator-v0",
+    entry_point="ml.api:ElevatorEnvironment"
+)
