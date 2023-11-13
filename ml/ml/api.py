@@ -33,9 +33,7 @@ class ElevatorEnvironment(gym.Env):
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
         self.max_occupancy = max_occupancy
-        # empty spaces
-        # self.observation_space = spaces.Space()
-        # self.action_space = spaces.Space()
+
         # To have valid action/observation spaces
         self.reset()
 
@@ -55,7 +53,7 @@ class ElevatorEnvironment(gym.Env):
                                                               max_occupancy=self.max_occupancy)
 
         # generate the arrival data or read in trough path
-        self.simulator.init_simulation("pxsim/data/test_data.csv")
+        self.simulator.init_simulation("pxsim/data/w1_f9_1.0.1.csv")
 
         # Define observation space
         self.observation_space = spaces.Dict({
@@ -85,22 +83,34 @@ class ElevatorEnvironment(gym.Env):
     def _get_rnd_int(self):
         return int(self.r.integers(0, int(1e6)))
 
-    def step(self, action):
+    def step(self, action, max_step_size: float | None = None):
         """ Function that is called by rollout of the enviroment
 
         Args:
             tensordict ([tensordict]): [the tensordict that contains the action that should be executed]
-
+            max_step_size: ([float|None]): [If the step size is not none, we limit the max step size of then enviroment 
+                                        in the info part the algorithm then returns whether an actual decision needs to be done.
+                                        If set and no decision is given allows to just continue the simulation with no changes]
         Returns:
             [tensordict]: [the tensordict that contains the observations the reward and if the simulation is finished.]
         """
-        # modify action list to dictionary
-        # and shift the to_serve value to be in range [-1,1] instead of [0,2]
-        action_dict = {
-            "target": action[::2],
-            "to_serve": action[1::2] - 1
-        }
-        return self.simulator.step(action_dict)
+        # if action is none then pass onwards, ie. no action send to the simulation
+        if (action is None):
+            action_dict = None
+        # modify action list to dictionary if not correctly passed as parameter
+        # needs to be handled as the policy can only output a list of values while dict is the default for all
+        # conventional algorihtms, might not be the best place for this conversion (:shrug)
+        elif (type(action) is not dict):
+            action_dict = {
+                "target": action[::2],
+                "to_serve": action[1::2] - 1
+            }
+        else:
+            action_dict = action
+            action_dict["to_serve"] -= 1
+        # shift the to_serve value to be in range [-1,1] instead of [0,2]
+
+        return self.simulator.step(action_dict, max_step_size=max_step_size)
 
     def _set_seed(self, seed):
         pass

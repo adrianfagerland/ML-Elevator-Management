@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml"
-version = "1.0.0"
+version = "1.0.2"
 description = ""
 authors = ["Adrian Fagerland <adrian.fagerland@hotmail.com>"]
 readme = "README.md"
@@ -14,8 +14,8 @@ torch = [
 # tensordict = "^0.2.1"
 # matplotlib = "^3.8.1"
 # torchrl = "^0.2.1"
-elsim = { path = "../elsim"}
-vis = { path = "../vis"}
+elsim = { path = "../elsim", develop = true }
+vis = { path = "../vis", develop = true }
 # gymnasium = "^0.26.2"
 # pygame = "^2.5.2"
 gymnasium = "^0.29.1"
