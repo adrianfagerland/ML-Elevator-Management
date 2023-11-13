@@ -21,8 +21,7 @@ class ElevatorSimulator:
                  num_elevators: int,
                  speed_elevator: float = 2.0,
                  acceleration_elevator: float = 0.4,
-                 max_load: int = 7,
-                 counter_weight: float = 0.4,
+                 max_occupancy: int = 7,
                  random_init: bool = False,
                  random_seed: float = 0):
         """ Initialises the Elevator Simulation.
@@ -32,7 +31,7 @@ class ElevatorSimulator:
             num_elevators (int): the number of elevators. All elevators can access any floor and all elevators have the same charateristics.
             speed_elevator (float, optional): The max speed of an elevator in floors per second. Defaults to 2.0.   
             acceleration_elevator (float, optional): The max acceleration of an elevator in floors per second^2. Defaults to 0.4.
-            max_load (int, optional): Max Number of People that can be transported by any elevator. People will not enter any elevator that is currently on its maximum load. Defaults to 7.
+            max_occupancy (int, optional): Max Number of People that can be transported by any elevator. People will not enter any elevator that is currently on its maximum load. Defaults to 7.
             counter_weight (float, optional): Percentage of max load that is used as a counter weight in the simulation. Relevant for Energy Consumption calculation.
             random_init (bool, optional): Whether the elevators are initialised with a random floor position. CURRENTLY NOT USED!
         """
@@ -42,7 +41,7 @@ class ElevatorSimulator:
         self.num_elevators = num_elevators
         self.max_speed = speed_elevator
         self.max_acc = acceleration_elevator
-        self.max_load = max_load
+        self.max_occupancy = max_occupancy
         self.random_init = random_init  # currently ignored and 0 is used :TODO
         self.done = False
 
@@ -105,28 +104,30 @@ class ElevatorSimulator:
         self.next_arrival_index = 0
 
     def return_observations(self, step_size):
-        elevator_doors = np.array([elevator.get_doors_open() for elevator in self.elevators])
-        elevator_positions_speed = np.array([(elevator.get_position(), elevator.get_speed())
-                                            for elevator in self.elevators])
-        elevator_buttons = np.array(self.elevator_buttons_list)
-        elevator_target = np.array([elevator.get_target_position() for elevator in self.elevators])
+        elevator_doors = np.array([elevator.get_doors_open() for elevator in self.elevators], dtype=np.float32)
+        elevator_positions = np.array([elevator.get_position() for elevator in self.elevators], dtype=np.float32)
+        elevator_speed = np.array([elevator.get_speed() for elevator in self.elevators], dtype=np.float32)
 
-        floor_buttons = np.array(list(zip(self.floor_buttons_pressed_up, self.floor_buttons_pressed_down)))
+        elevator_buttons = np.array(self.elevator_buttons_list, dtype=np.int8)
+        elevator_target = np.array([elevator.get_target_position() for elevator in self.elevators], dtype=np.int8)
+        occupancy_list = np.array([len(riding_list) for riding_list in self.elevator_riding_list], dtype=np.int8)
+        floor_buttons = np.array(
+            list(zip(self.floor_buttons_pressed_up, self.floor_buttons_pressed_down)), dtype=np.int8)
 
         loss = self.loss_calculation(step_size)
 
-        # done = False  # TODO write code that determine if done
-
+        # create dictionary with corrects types expected from gymnasium
         observations = {
-            "position": elevator_positions_speed[:, 0],
-            "speed": elevator_positions_speed[:, 1],
+            "position": elevator_positions,
+            "speed": elevator_speed,
             "doors_state": elevator_doors,
             "buttons": elevator_buttons,
             "target": elevator_target,
             "floors": floor_buttons,
-            "souls_on_board": np.array([len(riding_list) for riding_list in self.elevator_riding_list])
+            "elevators_occupancy": occupancy_list
         }
-        return (observations, -loss, self.done, None)
+        #       observation   reward  terminated? truncated? info
+        return (observations, -loss,  self.done,  False,     {})
 
     def reset_simulation(self):
         """ Resets the simulation by bringing simulation back into starting state
@@ -267,7 +268,7 @@ class ElevatorSimulator:
                     elevator_join_list = []
 
             # add the people queing on that floor the the elevator riding list if still enough space
-            num_possible_join = self.max_load - \
+            num_possible_join = self.max_occupancy - \
                 len(self.elevator_riding_list[next_elevator_index])
 
             for i in range(min(len(elevator_join_list), num_possible_join)):

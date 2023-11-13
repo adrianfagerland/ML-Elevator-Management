@@ -5,12 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "justMyCode":false,
+            "console": "integratedTerminal",
+        },
+        {
             "name": "Python: Simulator",
             "type": "python",
             "request": "launch",
             "module": "eval.main",
-            //"justMyCode": true,
-            "cwd":"${workspaceFolder}/eval"
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/eval"
         }
     ]
 }

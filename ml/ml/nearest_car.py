@@ -195,24 +195,15 @@ def get_nearest_floor_to_serve(calling_floors, elev_pos, elev_it, elev_speed, ma
 
 
 def calc_elev_dir(speed):
-    elev_dir = 0
-    if speed != 0:
-        elev_dir = speed / abs(speed)  # 1, 0, -1
-    assert elev_dir in [-1, 0, 1]
-    return elev_dir
+    return np.sign(speed)
 
 
 def can_serve(call_floor, elev_pos, elev_speed, max_acceleration):
     distance = abs(call_floor - elev_pos)
 
-    if max_acceleration == 0:
-        return False
+    min_distance_needed = (elev_speed ** 2) / (2 * max_acceleration)
 
-    min_distance_needed = (elev_speed * elev_speed) / (2 * max_acceleration)
-
-    if min_distance_needed > distance:
-        return False
-    return True
+    return min_distance_needed <= distance
 
 
 # # TESTS
