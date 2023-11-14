@@ -10,11 +10,8 @@ from stable_baselines3.common.env_checker import check_env
 from ml.api import ElevatorEnvironment
 from rl.feature_extractor import ElevatorFeatureExtractor
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+
 import gymnasium as gym
-
-
-env = gym.make('Elevator-v0', num_floors=20, num_elevators=5)
-check_env(env)
 
 
 class CustomNetwork(nn.Module):
@@ -95,5 +92,8 @@ policy_kwargs = dict(
     features_extractor_kwargs=dict(features_dim=128),
 )
 # model = PPO("MultiInputPolicy", env)
+env = gym.make('Elevator-v0', num_floors=20, num_elevators=5)
+# check_env(env)
+
 model = PPO(CustomActorCriticPolicy, env)
 model.learn(5000)

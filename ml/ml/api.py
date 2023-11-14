@@ -3,7 +3,7 @@ from gymnasium import spaces
 import numpy as np
 
 from elsim.elevator_simulator import ElevatorSimulator
-
+from stable_baselines3.common.env_checker import _check_obs
 # TODO adjust system enviroment to work with elevator_simulator
 
 
@@ -60,15 +60,18 @@ class ElevatorEnvironment(gym.Env):
                 self.simulator.init_simulation("../pxsim/data/w1_f9_1.0.1.csv")
             except:
                 raise Exception("No data found!")
-        # Define observation space
+        # Define observation space Sequence
         self.observation_space = spaces.Dict({
-            "position": spaces.Box(low=0, high=self.episode_num_floors, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-            "speed": spaces.Box(low=-self.max_speed, high=self.max_speed, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-            "doors_state": spaces.Box(low=0, high=1, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
-            "buttons": spaces.MultiBinary((self.episode_num_elevators, self.episode_num_floors), seed=self._get_rnd_int()),
-            "floors": spaces.MultiBinary((self.episode_num_floors, 2), seed=self._get_rnd_int()),
-            "elevators_occupancy": spaces.MultiDiscrete([self.max_occupancy] * self.episode_num_elevators, seed=self._get_rnd_int()),
-            "target": spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
+            "elevators": spaces.Sequence(
+                spaces.Dict({
+                    "position": spaces.Box(low=0, high=self.episode_num_floors, dtype=np.float32, seed=self._get_rnd_int()),
+                    "speed": spaces.Box(low=-self.max_speed, high=self.max_speed, dtype=np.float32, seed=self._get_rnd_int()),
+                    "doors_state": spaces.Box(low=0, high=1, dtype=np.float32, seed=self._get_rnd_int()),
+                    "buttons": spaces.MultiBinary((self.episode_num_floors), seed=self._get_rnd_int()),
+                    "elevators_occupancy": spaces.Discrete(self.max_occupancy, seed=self._get_rnd_int()),
+                    "target": spaces.Discrete(self.episode_num_floors, seed=self._get_rnd_int()),
+                }), seed=self._get_rnd_int()),
+            "floors": spaces.MultiBinary([self.episode_num_floors, 2], seed=self._get_rnd_int()),
         })
 
         # Define action space

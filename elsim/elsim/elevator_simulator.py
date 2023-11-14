@@ -121,16 +121,24 @@ class ElevatorSimulator:
         loss = self.loss_calculation(step_size)
 
         targets = np.array([elevator.get_target_position() for elevator in self.elevators])
+
+        elevators_dict = np.array([{}] * self.num_elevators, dtype=object)
+
+        for elevator_id in range(self.num_elevators):
+            elevators_dict[elevator_id] = {
+                "position": elevator_positions[elevator_id],
+                "speed": elevator_speed[elevator_id],
+                "doors_state": elevator_doors[elevator_id],
+                "buttons": elevator_buttons[elevator_id],
+                "target": elevator_target[elevator_id],
+                "elevators_occupancy": occupancy_list[elevator_id]
+            }
+
+            pass
         # create dictionary with corrects types expected from gymnasium
         observations = {
-            "position": elevator_positions,
-            "speed": elevator_speed,
-            "doors_state": elevator_doors,
-            "buttons": elevator_buttons,
-            "target": elevator_target,
             "floors": floor_buttons,
-            "elevators_occupancy": occupancy_list,
-            "target": targets
+            "elevators": tuple(elevators_dict)
         }
         #       observation   reward  terminated? truncated? info
         return (observations, -loss,  self.done,  False,     {"needs_decision": True})
@@ -315,6 +323,11 @@ class ElevatorSimulator:
 
         # return the data for the observations
         return self.return_observations(step_size=step_size)
+
+    def get_world_time_and_day(self):
+
+        # TODO
+        pass
 
 
 if __name__ == "__main__":
