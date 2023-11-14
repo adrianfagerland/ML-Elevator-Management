@@ -31,7 +31,7 @@ A few notes about features we could add to clean up the below code:
 """
 
 
-def script_lstm(
+def script_alpha_lstm(
     input_size,
     hidden_size,
     num_layers,
@@ -51,8 +51,8 @@ def script_lstm(
     return stack_type(
         num_layers,
         layer_type,
-        first_layer_args=[LSTMCell, input_size, hidden_size],
-        other_layer_args=[LSTMCell, hidden_size * dirs, hidden_size],
+        first_layer_args=[alpha_LSTMCell, input_size, hidden_size],
+        other_layer_args=[alpha_LSTMCell, hidden_size * dirs, hidden_size],
     )
 
 
@@ -80,13 +80,13 @@ def script_lnlstm(
         num_layers,
         layer_type,
         first_layer_args=[
-            LSTMCell,
+            alpha_LSTMCell,
             input_size,
             hidden_size,
             decompose_layernorm,
         ],
         other_layer_args=[
-            LSTMCell,
+            alpha_LSTMCell,
             hidden_size * dirs,
             hidden_size,
             decompose_layernorm,
@@ -97,8 +97,7 @@ def script_lnlstm(
 LSTMState = namedtuple("LSTMState", ["hx", "cx"])
 
 
-
-class LSTMCell(jit.ScriptModule):
+class alpha_LSTMCell(jit.ScriptModule):
     def __init__(self, input_size, hidden_size):
         super().__init__()
         self.input_size = input_size
