@@ -19,6 +19,14 @@
             "module": "eval.main",
             "justMyCode": true,
             "cwd": "${workspaceFolder}/eval"
+        },
+        {
+            "name": "Python: Network",
+            "type": "python",
+            "request": "launch",
+            "module": "rl.network",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/ml"
         }
     ]
 }

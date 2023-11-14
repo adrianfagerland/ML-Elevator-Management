@@ -4,10 +4,12 @@ import torch as th
 from torch import nn
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.policies import MultiInputActorCriticPolicy
 from stable_baselines3.common.env_checker import check_env
 
 from ml.api import ElevatorEnvironment
+from rl.feature_extractor import ElevatorFeatureExtractor
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import gymnasium as gym
 
 
@@ -52,7 +54,6 @@ class CustomNetwork(nn.Module):
         :return: (th.Tensor, th.Tensor) latent_policy, latent_value of the specified network.
             If all layers are shared, then ``latent_policy == latent_value``
         """
-        print(1)
         return self.forward_actor(features), self.forward_critic(features)
 
     def forward_actor(self, features: th.Tensor) -> th.Tensor:
@@ -61,11 +62,14 @@ class CustomNetwork(nn.Module):
     def forward_critic(self, features: th.Tensor) -> th.Tensor:
         return self.value_net(features)
 
+    def get_elevator_observation(self):
+        pass
 
-class CustomActorCriticPolicy(ActorCriticPolicy):
+
+class CustomActorCriticPolicy(MultiInputActorCriticPolicy):
     def __init__(
         self,
-        observation_space: spaces.Space,
+        observation_space: spaces.Dict,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
         *args,
@@ -86,5 +90,10 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
         self.mlp_extractor = CustomNetwork(self.features_dim)
 
 
+policy_kwargs = dict(
+    features_extractor_class=ElevatorFeatureExtractor,
+    features_extractor_kwargs=dict(features_dim=128),
+)
+# model = PPO("MultiInputPolicy", env)
 model = PPO(CustomActorCriticPolicy, env)
 model.learn(5000)
