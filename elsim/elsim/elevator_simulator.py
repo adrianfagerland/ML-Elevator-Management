@@ -22,8 +22,8 @@ class ElevatorSimulator:
                  speed_elevator: float = 2.0,
                  acceleration_elevator: float = 0.4,
                  max_occupancy: int = 7,
-                 random_init: bool = False,
-                 random_seed: float = 0):
+                 random_seed: float = 0,
+                 random_elevator_init: bool = True):
         """ Initialises the Elevator Simulation.
 
         Args:
@@ -33,7 +33,7 @@ class ElevatorSimulator:
             acceleration_elevator (float, optional): The max acceleration of an elevator in floors per second^2. Defaults to 0.4.
             max_occupancy (int, optional): Max Number of People that can be transported by any elevator. People will not enter any elevator that is currently on its maximum load. Defaults to 7.
             counter_weight (float, optional): Percentage of max load that is used as a counter weight in the simulation. Relevant for Energy Consumption calculation.
-            random_init (bool, optional): Whether the elevators are initialised with a random floor position. CURRENTLY NOT USED!
+            random_elevator_init (bool, optional): Whether the elevators are initialised with a random floor position. CURRENTLY NOT USED!
         """
 
         # Store simulation parameters
@@ -42,14 +42,18 @@ class ElevatorSimulator:
         self.max_speed = speed_elevator
         self.max_acc = acceleration_elevator
         self.max_occupancy = max_occupancy
-        self.random_init = random_init  # currently ignored and 0 is used :TODO
+        self.random_init = random_elevator_init
         self.done = False
 
         self.r = Random(random_seed)
 
         # Init Elevators
-        self.elevators = [Elevator(
-            0, self.num_floors, self.max_speed, self.max_acc) for _ in range(self.num_elevators)]
+        if (self.random_init):
+            self.elevators = [Elevator(
+                self.r.randint(0, self.num_floors - 1), self.num_floors, self.max_speed, self.max_acc) for _ in range(self.num_elevators)]
+        else:
+            self.elevators = [Elevator(
+                0, self.num_floors, self.max_speed, self.max_acc) for _ in range(self.num_elevators)]
 
         # People positioning
         self.floor_queue_list_up = [list() for _ in range(self.num_floors)]
@@ -116,6 +120,7 @@ class ElevatorSimulator:
 
         loss = self.loss_calculation(step_size)
 
+        targets = np.array([elevator.get_target_position() for elevator in self.elevators])
         # create dictionary with corrects types expected from gymnasium
         observations = {
             "position": elevator_positions,
@@ -124,7 +129,8 @@ class ElevatorSimulator:
             "buttons": elevator_buttons,
             "target": elevator_target,
             "floors": floor_buttons,
-            "elevators_occupancy": occupancy_list
+            "elevators_occupancy": occupancy_list,
+            "target": targets
         }
         #       observation   reward  terminated? truncated? info
         return (observations, -loss,  self.done,  False,     {"needs_decision": True})

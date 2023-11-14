@@ -35,18 +35,21 @@ def print_elevator(elev_positions, buttons_out, buttons_in, elev_speed, px, setu
         print_str += end_str + "\n"
 
     for e_it, e in enumerate(elev_positions):
-        print_str += (f"Elev {e_it}: ")
+        print_str += "Elev " + str(e_it) + ": "
         for f_it, f in enumerate(buttons_in[e_it]):
+            board_str = ""
             if f == True:
-                print_str += str(f_it)
+                board_str += str(f_it)
+            print_str += " " * (3 - len(board_str)) + board_str
         print_str += "Souls on board:" + str(px[e_it]) + "\n"
 
-    num_lines = len(print_str.splitlines()) + 1
     if (not setup):
+        num_lines = len(print_str.splitlines()) + 1
+        line_length = max([len(line) for line in print_str.splitlines()])
         for _ in range(num_lines):
-            delete_last_line()
+            delete_last_line(line_length)
     print(print_str)
 
 
-def delete_last_line():
-    print("\033[A                             \033[A")
+def delete_last_line(line_length):
+    print("\033[A" + " " * (line_length + 3) + "\033[A")

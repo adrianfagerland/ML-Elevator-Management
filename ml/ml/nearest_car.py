@@ -77,21 +77,28 @@ class NearestCar(Scheduler):
                 elev_dir = self.calc_elev_dir(elev_speed[elev_it])
 
                 fs = -1
+
                 # check if elev can serve the call
-                if (not self.can_serve(call["floor"], elev_pos, elev_speed[elev_it], max_acceleration)):
+                if (not self.can_serve(call["floor"], elev_pos, elev_speed[elev_it])):
                     fs = -2
 
                 # check if elevator is moving away from call
-                elif (elev_pos > call["floor"] and elev_dir == 1) or (elev_pos < call["floor"] and elev_dir == -1):
+                elif ((elev_pos - call["floor"]) * elev_dir > 1):
                     fs = 1
 
                 # at this point elevator is moving towards us. Check if same direction as call
                 elif (elev_dir == 1 and call["type"] == "up") or (elev_dir == -1 and call["type"] == "down"):
-                    fs = ((self.num_floors - 1) + 2) - d
+                    fs = (self.num_floors + 2) - d
 
                 # check if direction is different from call
                 elif (elev_dir == 1 and call["type"] == "down") or (elev_dir == -1 and call["type"] == "up"):
-                    fs = ((self.num_floors - 1) + 1) - d
+                    fs = (self.num_floors + 1) - d
+
+                # check if elevator is idle
+                elif (elev_dir == 0):
+                    fs = (self.num_floors + 1) - d
+                else:
+                    raise Exception("Should not happen")
 
                 fs_score.append(fs)
                 # print("Call at Floor:", call["floor"], " Elevator", elev_it, "\tFS:", fs,"\tN", N,"\td", d)
@@ -104,8 +111,8 @@ class NearestCar(Scheduler):
                 if f > max_fs:
                     max_elevator = fs_it
                     max_fs = f
-                if f == max_fs:
-
+                # break tie
+                elif f == max_fs:
                     if abs(elev_positions[fs_it] - call["floor"]) < abs(elev_positions[max_elevator] - call["floor"]):
                         max_elevator = fs_it
                         max_fs = f
@@ -135,7 +142,7 @@ class NearestCar(Scheduler):
             # if elevator has no call, then stopp at nearest one you can stopp at
 
             to_serve_result.append(to_serve)
-            target = self.get_nearest_floor_to_serve(to_serve, elev_pos, elev_it, elev_speed, max_acceleration)
+            target = self.get_nearest_floor_to_serve(to_serve, elev_pos, elev_it, elev_speed)
 
             if (target == -1):
 
@@ -145,31 +152,31 @@ class NearestCar(Scheduler):
                 if elev_dir == 0:
                     target = int(elev_pos)
                 elif elev_dir == 1:
-                    stopps_in_dir = range(elev_pos, (self.num_floors - 1))
+                    stopps_in_dir = range(int(np.ceil(elev_pos)), (self.num_floors - 1))
                     target = self.get_nearest_floor_to_serve(
-                        stopps_in_dir, elev_pos, elev_it, elev_speed, max_acceleration)
+                        stopps_in_dir, elev_pos, elev_it, elev_speed)
                 elif elev_dir == -1:
-                    stopps_in_dir = range(0, elev_pos)
+                    stopps_in_dir = range(0, int(np.floor(elev_pos)))
                     target = self.get_nearest_floor_to_serve(
-                        stopps_in_dir, elev_pos, elev_it, elev_speed, max_acceleration)
+                        stopps_in_dir, elev_pos, elev_it, elev_speed)
 
                 # still no target found, then search on all floors
                 if target == -1:
                     stopps_in_dir = range(0, (self.num_floors - 1))
                     target = self.get_nearest_floor_to_serve(
-                        stopps_in_dir, elev_pos, elev_it, elev_speed, max_acceleration)
+                        stopps_in_dir, elev_pos, elev_it, elev_speed)
 
             target_result.append(target)
 
         return {"target": np.array(target_result), "to_serve": np.array(to_serve_result)}
 
-    def get_nearest_floor_to_serve(self, calling_floors, elev_pos, elev_it, elev_speed, max_acceleration):
+    def get_nearest_floor_to_serve(self, calling_floors, elev_pos, elev_it, elev_speed):
         # check which floor the elevator has to serve is the nearet one and can be served
         nearest_floor = -1
         nearest_floor_distance = -1
 
         for fts in calling_floors:
-            if not self.can_serve(fts, elev_pos, elev_speed[elev_it], max_acceleration):
+            if not self.can_serve(fts, elev_pos, elev_speed[elev_it]):
                 continue
 
             d = abs(elev_pos - fts)
@@ -189,7 +196,7 @@ class NearestCar(Scheduler):
     def calc_elev_dir(self, speed):
         return np.sign(speed)
 
-    def can_serve(self, call_floor, elev_pos, elev_speed, max_acceleration):
+    def can_serve(self, call_floor, elev_pos, elev_speed):
         distance = abs(call_floor - elev_pos)
-        min_distance_needed = (elev_speed ** 2) / (2 * max_acceleration)
+        min_distance_needed = (elev_speed ** 2) / (2 * self.max_acceleration)
         return min_distance_needed <= distance
