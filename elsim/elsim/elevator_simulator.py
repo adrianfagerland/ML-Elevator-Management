@@ -126,10 +126,10 @@ class ElevatorSimulator:
 
         for elevator_id in range(self.num_elevators):
             elevators_dict[elevator_id] = {
-                "position": elevator_positions[elevator_id],
-                "speed": elevator_speed[elevator_id],
-                "doors_state": elevator_doors[elevator_id],
-                "buttons": elevator_buttons[elevator_id],
+                "position": np.array([elevator_positions[elevator_id]], dtype=np.float32),
+                "speed": np.array([elevator_speed[elevator_id]], dtype=np.float32),
+                "doors_state": np.array([elevator_doors[elevator_id]], dtype=np.float32),
+                "buttons": np.array(elevator_buttons[elevator_id], dtype=np.int8),
                 "target": elevator_target[elevator_id],
                 "elevators_occupancy": occupancy_list[elevator_id]
             }
@@ -143,10 +143,10 @@ class ElevatorSimulator:
         #       observation   reward  terminated? truncated? info
         return (observations, -loss,  self.done,  False,     {"needs_decision": True})
 
-    def reset_simulation(self):
+    def reset(self, seed=None, options=None):
         """ Resets the simulation by bringing simulation back into starting state
         """
-        # TODO
+
         self.done = False
         return self.return_observations(step_size=0)
 

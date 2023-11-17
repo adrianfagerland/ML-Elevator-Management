@@ -6,6 +6,7 @@ from torch import nn
 from stable_baselines3 import PPO
 from stable_baselines3.common.policies import MultiInputActorCriticPolicy
 from stable_baselines3.common.env_checker import check_env
+from gymnasium.utils.env_checker import check_env
 
 from ml.api import ElevatorEnvironment
 from rl.feature_extractor import ElevatorFeatureExtractor
@@ -93,7 +94,7 @@ policy_kwargs = dict(
 )
 # model = PPO("MultiInputPolicy", env)
 env = gym.make('Elevator-v0', num_floors=20, num_elevators=5)
-# check_env(env)
+check_env(env.unwrapped)
 
 model = PPO(CustomActorCriticPolicy, env)
 model.learn(5000)

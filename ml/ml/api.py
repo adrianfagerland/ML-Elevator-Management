@@ -37,9 +37,12 @@ class ElevatorEnvironment(gym.Env):
         # To have valid action/observation spaces
         self.reset()
 
-    def reset(self, seed=0, options={}):
-        self.r = np.random.Generator(np.random.PCG64(seed))
+    def reset(self, seed=None, options={}):
+        # We need the following line to seed self.np_random
+        super().reset(seed=seed)
+
         # Initializes everything
+        self.r = np.random.Generator(np.random.PCG64(seed))
 
         # 1. choose num_elevators and num_floors for this episode
         self.episode_num_elevators = self.r.integers(*self.num_elevators_range)
@@ -85,7 +88,7 @@ class ElevatorEnvironment(gym.Env):
         })
         """
         # return initial observation and info
-        observations, _, _, _, info = self.simulator.reset_simulation()
+        observations, _, _, _, info = self.simulator.reset()
         return (observations, info)
 
     def _get_rnd_int(self):
@@ -121,6 +124,9 @@ class ElevatorEnvironment(gym.Env):
         return self.simulator.step(action_dict, max_step_size=max_step_size)
 
     def _set_seed(self, seed):
+        pass
+
+    def render(self):
         pass
 
 # Register the enviroment
