@@ -18,7 +18,7 @@
             "request": "launch",
             "module": "eval.main",
             "justMyCode": true,
-            "cwd": "${workspaceFolder}/eval"
+            "cwd": "${workspaceFolder}/elevator_management"
         },
         {
             "name": "Python: Network",
@@ -26,7 +26,7 @@
             "request": "launch",
             "module": "rl.network",
             "justMyCode": false,
-            "cwd": "${workspaceFolder}/ml"
+            "cwd": "${workspaceFolder}/elevator_management"
         }
     ]
 }

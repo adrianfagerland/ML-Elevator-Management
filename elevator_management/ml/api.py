@@ -53,13 +53,7 @@ class ElevatorEnvironment(gym.Env):
                                                               max_occupancy=self.max_occupancy)
 
         # generate the arrival data or read in trough path, TODO: needs to be changed
-        try:
-            self.simulator.init_simulation("pxsim/data/w1_f9_1.0.1.csv")
-        except:
-            try:
-                self.simulator.init_simulation("../pxsim/data/w1_f9_1.0.1.csv")
-            except:
-                raise Exception("No data found!")
+        self.simulator.init_simulation("data/w1_f9_1.0.1.csv")
         # Define observation space
         self.observation_space = spaces.Dict({
             "position": spaces.Box(low=0, high=self.episode_num_floors, shape=(self.episode_num_elevators,), dtype=np.float32, seed=self._get_rnd_int()),
