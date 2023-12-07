@@ -44,6 +44,7 @@ class ElevatorSimulator:
         self.max_occupancy = max_occupancy
         self.random_init = random_elevator_init
         self.done = False
+        self.active_elevators = []
 
         self.r = Random(random_seed)
 
@@ -133,7 +134,7 @@ class ElevatorSimulator:
             "target": targets
         }
         #       observation   reward  terminated? truncated? info
-        return (observations, -loss,  self.done,  False,     {"needs_decision": True})
+        return (observations, -loss,  self.done,  False, {"needs_decision": True})
 
     def reset_simulation(self):
         """ Resets the simulation by bringing simulation back into starting state
@@ -190,6 +191,8 @@ class ElevatorSimulator:
             next_movements = actions['next_move']
             for i, elevator in enumerate(self.elevators):
                 elevator.set_target_position(targets[i], next_movements[i])
+                if elevator.get_target_position() != elevator.get_position():
+                    self.active_elevators.append(elevator)
 
         # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
@@ -200,10 +203,6 @@ class ElevatorSimulator:
         else:
             next_arrival, floor_start, floor_end = self.arrivals[self.next_arrival_index]
 
-        # Get next elevator arrival
-        elevator_arrival_times = [(ind, elevator.get_time_to_target())
-                                  for ind, elevator in enumerate(self.elevators)]
-        next_elevator_index, next_elevator_time = sorted(elevator_arrival_times, key=lambda x: x[1])[0]
 
         # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
         # if (min(next_arrival, next_elevator_time) >= INFTY):
@@ -212,6 +211,14 @@ class ElevatorSimulator:
             # TODO: discuss how to handle run out of data in the context of learning
             self.done = True
             # raise NotImplementedError
+        
+        # Get next elevator arrival
+        elevator_arrival_times = [(elevator, elevator.get_time_to_target()) for elevator in self.active_elevators]
+        if (len(elevator_arrival_times) == 0):
+            next_elevator_time = INFTY
+        else:
+            next_elevator, next_elevator_time = max(elevator_arrival_times, key=lambda x: x[1])
+            next_elevator_index = self.elevators.index(next_elevator)
 
         # Test if max_step_size is less than the next event, then just advance simulation max_step_size
         if (max_step_size is not None and max_step_size < next_elevator_time and max_step_size < next_arrival - self.world_time):
@@ -246,6 +253,7 @@ class ElevatorSimulator:
 
         else:
             # update the time of the simulation and remember how big the interval was (for the loss function)
+            self.active_elevators.remove(next_elevator) # TODO check if this makes sende #doubt
             step_size = next_arrival - self.world_time
             self.world_time = next_arrival
 
@@ -274,12 +282,15 @@ class ElevatorSimulator:
                 if (len(self.floor_queue_list_down[arrived_floor]) > 0 and len(self.floor_queue_list_up[arrived_floor])):
                     self.floor_buttons_pressed_down[arrived_floor] = 0
                     elevator_join_list = self.floor_queue_list_down[arrived_floor]
+                    arrived_elevator.next_movement = -1
                 elif (len(self.floor_queue_list_up[arrived_floor]) > 0):
                     self.floor_buttons_pressed_up[arrived_floor] = 0
                     elevator_join_list = self.floor_queue_list_up[arrived_floor]
+                    arrived_elevator.next_movement = 1
                 elif (len(self.floor_queue_list_down[arrived_floor]) > 0):
                     self.floor_buttons_pressed_down[arrived_floor] = 0
                     elevator_join_list = self.floor_queue_list_down[arrived_floor]
+                    arrived_elevator.next_movement = -1
                 else:
                     elevator_join_list = []
 
@@ -290,6 +301,12 @@ class ElevatorSimulator:
             for i in range(min(len(elevator_join_list), num_possible_join)):
                 self.elevator_riding_list[next_elevator_index].append((
                     elevator_join_list[i][0], self.world_time, elevator_join_list[i][1]))
+                if arrived_elevator.next_movement == 1:
+                    self.floor_queue_list_up[arrived_floor] = self.floor_queue_list_up[arrived_floor][max(
+                        len(self.floor_queue_list_up[arrived_floor]), num_possible_join):]
+                elif arrived_elevator.next_movement == -1:
+                    self.floor_queue_list_down[arrived_floor] = self.floor_queue_list_down[arrived_floor][max(
+                        len(self.floor_queue_list_down[arrived_floor]), num_possible_join):]
 
             elevator_join_list = elevator_join_list[max(
                 len(elevator_join_list), num_possible_join):]

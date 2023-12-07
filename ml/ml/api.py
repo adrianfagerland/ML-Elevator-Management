@@ -37,7 +37,7 @@ class ElevatorEnvironment(gym.Env):
         # To have valid action/observation spaces
         self.reset()
 
-    def reset(self, seed=0, options={}):
+    def reset(self, seed=None, options={}):
         self.r = np.random.Generator(np.random.PCG64(seed))
         # Initializes everything
 
