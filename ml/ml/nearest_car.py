@@ -26,7 +26,7 @@ class NearestCar(Scheduler):
         return self.scheduler_nearest_car(N, calls)
 
     def scheduler_nearest_car(self, N, calls):
-        target = [elevator.position if abs(elevator.speed) < 0.000001 else [0] for elevator in self.elevators]
+        target = [-1]*len(self.elevators)
         next_move = np.array([0] * 4)
 
         for elevator in self.elevators:
@@ -59,6 +59,8 @@ class NearestCar(Scheduler):
             next_move[best_elevator.number] = call["direction"]
 
             # print("Call", call["direction"], "at floor",call["floor"]," will be served by elevator", best_elevator.number)
+        target = [target[i] if target[i] != -1 else elevator.position if elevator.can_serve(elevator.position) else elevator.position - 1 if elevator.can_serve(
+            elevator.position-1) else elevator.position + 1 for i, elevator in enumerate(self.elevators)]
 
         return {"target": target, "next_move": next_move}
 

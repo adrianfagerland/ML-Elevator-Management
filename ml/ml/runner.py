@@ -28,20 +28,14 @@ class Runner():
 
         # if visualize is True then step size cannot be none
         assert not visualize or step_size is not None
-        print_elevator(self.observations["position"],
-                       self.observations["floors"],
-                       self.observations["buttons"],
-                       self.observations["speed"],
-                       self.observations["elevators_occupancy"],
-                       setup=True)
+        door_state = self.observations['doors_state']
+        print_elevator(self.observations, door_state, setup=True)
+        
 
         while not self.done:
             if visualize:
-                print_elevator(self.observations["position"],
-                               self.observations["floors"],
-                               self.observations["buttons"],
-                               self.observations["speed"],
-                               self.observations["elevators_occupancy"])
+                print_elevator(self.observations, door_state)
+                door_state = self.observations['doors_state']
 
                 time.sleep(step_size)
             # If needs decision is true => action to None therefore no elevator will have its target changed
