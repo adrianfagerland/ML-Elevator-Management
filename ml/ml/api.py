@@ -37,7 +37,7 @@ class ElevatorEnvironment(gym.Env):
         # To have valid action/observation spaces
         self.reset()
 
-    def reset(self, seed=0, options={}):
+    def reset(self, seed=None, options={}):
         self.r = np.random.Generator(np.random.PCG64(seed))
         # Initializes everything
 
@@ -108,12 +108,12 @@ class ElevatorEnvironment(gym.Env):
         elif (type(action) is not dict):
             action_dict = {
                 "target": action[::2],
-                "to_serve": action[1::2] - 1
+                "next_move": action[1::2] - 1
             }
         else:
             action_dict = action
-            action_dict["to_serve"] -= 1
-        # shift the to_serve value to be in range [-1,1] instead of [0,2]
+            #action_dict["next_move"] -= 1
+        # shift the next_move value to be in range [-1,1] instead of [0,2]
 
         return self.simulator.step(action_dict, max_step_size=max_step_size)
 

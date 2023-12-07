@@ -1,14 +1,14 @@
-from hmac import new
-from typing_extensions import Self
-from dataclasses import dataclass
-from random import Random
-from math import sqrt
 from copy import deepcopy
-from numpy import sign
+from dataclasses import dataclass
+from hmac import new
+from math import sqrt
+from random import Random
 
-
-from elsim.parameters import DOOR_STAYING_OPEN_TIME, DOOR_OPENING_TIME
 from numpy import infty as INFTY
+from numpy import sign
+from typing_extensions import Self
+
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
 
 
 class Elevator:
@@ -214,13 +214,16 @@ class Elevator:
                                                                     time_to_slow_down))
                         pass
         # target position was reached
-        # add open doors
-        trajectory_step1 = self.trajectory_list[-1].copy().set_open(
-            1).set_doors_opening_direction(1).set_time(DOOR_OPENING_TIME)
-        trajectory_step2 = self.trajectory_list[-1].copy().set_open(
-            1).set_time(DOOR_STAYING_OPEN_TIME)
+        # add open doors if needed
+        if self.num_passangers > 0 or self.next_movement != 0:
+            trajectory_step1 = self.trajectory_list[-1].copy().set_open(
+                1).set_doors_opening_direction(1).set_time(DOOR_OPENING_TIME)
+            trajectory_step2 = self.trajectory_list[-1].copy().set_open(
+                1).set_time(DOOR_STAYING_OPEN_TIME)
+            trajectory_step3 = self.trajectory_list[-1].copy().set_open(
+                0).set_doors_opening_direction(-1).set_time(DOOR_OPENING_TIME)
 
-        self.trajectory_list.extend([trajectory_step1, trajectory_step2])
+            self.trajectory_list.extend([trajectory_step1, trajectory_step2, trajectory_step3])
 
     def get_time_to_target(self) -> float:
         """ Outputs the time this elevator needs until it arrives at the required target plus the time for opening the door
