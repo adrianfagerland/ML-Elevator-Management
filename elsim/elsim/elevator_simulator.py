@@ -187,7 +187,7 @@ class ElevatorSimulator:
         # if action is defined => execute the actions by sending them to the elevators
         if (actions is not None):
             targets = actions['target']
-            next_movements = actions['to_serve']
+            next_movements = actions['next_move']
             for i, elevator in enumerate(self.elevators):
                 elevator.set_target_position(targets[i], next_movements[i])
 

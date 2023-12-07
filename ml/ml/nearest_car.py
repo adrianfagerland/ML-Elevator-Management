@@ -1,5 +1,5 @@
 import numpy as np
-
+import random
 from ml.scheduler import Scheduler
 
 # Nearest Car: Compute for every call which elevator should serve it.
@@ -17,186 +17,137 @@ from ml.scheduler import Scheduler
 class NearestCar(Scheduler):
     def __init__(self, num_elevators, num_floors, max_speed, max_acceleration) -> None:
         super().__init__(num_elevators, num_floors, max_speed, max_acceleration)
+        
 
     def decide(self, observations, error):
-        return self.scheduler_nearest_car(elev_positions=observations["position"], buttons_out=observations["floors"],
-                                          buttons_in=observations["buttons"], elev_speed=observations["speed"], max_acceleration=self.max_acceleration)
+        elevators = self.observation_to_elevator_list(observations)
+        calls = self.floors_to_calls(observations["floors"])
+        N = len(observations["floors"])
+        return self.scheduler_nearest_car(N,elevators, calls)
 
-    def scheduler_nearest_car(self, elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration):
 
-        res = self.scheduler_nearest_car_helper(elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration)
+    def scheduler_nearest_car(self, N, elevators, calls):
+        
+        target = [0] * 4
+        next_move = np.array([0] * 4)
 
-        # depress buttons out
-        new_buttons_out = np.zeros_like(buttons_out)
-        # modify buttons insde
+        #calculate for every call which elevator will serve it
+        for call_floor, call in enumerate(calls):
+            
+            best_elevator = elevators[0] #default is 0
+            best_fs_value = -999
 
-        # set has seve array inside the button array
-        new_buttons_in = buttons_in.copy()
-        for t_idx, ts in enumerate(res["to_serve"]):
-            for m in ts:
-                new_buttons_in[t_idx][m] = True
+            for elev in elevators:
+                fs = self.calc_fs(N, call["direction"], call["floor"], elev)
+                if fs > best_fs_value:
+                    best_fs_value = fs
+                    best_elevator = elev
 
-        for elev_idx, bi in enumerate(buttons_in):
-            # turn of the current floor
-            # TODO FIX, added int() around "res["target"][elev_idx]" to make it run
-            elev_current_floor = int(res["target"][elev_idx])
-            new_buttons_in[elev_idx][elev_current_floor] = False
+                #if equaly good then take the nearest
+                elif fs == best_elevator and (abs(elev.position - call["floor"]) < abs(best_elevator.position - call["floor"])):
+                    best_fs_value = fs
+                    best_elevator = elev        
 
-        new_speed = [0] * len(elev_positions)
+            best_elevator.add_call(call)
+            target[best_elevator.number] = call["floor"]
+            next_move[best_elevator.number] = call["direction"]
 
-        next = self.scheduler_nearest_car_helper(
-            res["target"], new_buttons_out, new_buttons_in, new_speed, max_acceleration)
+            #print("Call", call["direction"], "at floor",call["floor"]," will be served by elevator", best_elevator.number)
 
-        directions = np.array([-1] * len(next["target"]))
-        for i in range(0, len(next["target"])):
-            d = next["target"][i] - res["target"][i]
+ 
+        return {"target" : target , "next_move" : next_move}
+    
+    def calc_fs(self, N, call_direction, call_floor, elevator):
+        distance = abs(elevator.position)
 
-            # normalize direction
-            if d != 0:
-                d = d / abs(d)  # -2 -> -1
-            directions[i] = d
+        #check if elevator can not serve floor RET0
+        if elevator.can_serve(call_floor) == False:
+            return 0
 
-        return {"target": res["target"], "to_serve": directions}
+        #elevator is moving away from call RER1
+        if (elevator.direction == 1 and elevator.position > call_floor) or (elevator.direction == -1 and elevator.position < call_floor):
+            return 1
+    
+        #elevator is not moving RET 1.1 TODO decide on this value
+        if (elevator.direction == 0):
+            return 1.1
+    
+        #vvv at this point elevator is moving towards call vvv
+        #if direction of elevator the same as call direction RET (N+2)-d
+        if(elevator.direction == call_direction):
+            return N+2-distance
+        
+        #if direction of elevator the oposit as call direction RET (N+1)-d
+        if(elevator.direction == call_direction * -1):
+            return N+1-distance
+        
+        #this should not happen
+        raise Exception(
+                    "[Nearest Car] should not happen")
 
-    def scheduler_nearest_car_helper(self, elev_positions, buttons_out, buttons_in, elev_speed, max_acceleration):
-        calls = []
+        
 
-        # create an algorithm specific format
-        for floor_it, b in enumerate(buttons_out):
-            if b[0] == True:
-                calls.append({"type": "up", "floor": floor_it, "elevator": None})
 
-            if b[1] == True:
-                calls.append({"type": "down", "floor": floor_it, "elevator": None})
+    def floors_to_calls(self, floors):
 
-        for call in calls:
-            fs_score = []
-            for elev_it, elev_pos in enumerate(elev_positions):
+        out = []
+        
+        for i in range(0, len(floors)):
+            for j in range(0, len(floors[0])):
+                if floors[i][j] == 1 and j == 0:
+                    out.append({"direction": 1, "floor": i})
+                    continue
+            
+                if floors[i][j] == 1 and j == 1:
+                    out.append({"direction": -1, "floor": i})
+                    continue
 
-                d = abs(elev_pos - call["floor"])
-                elev_dir = self.calc_elev_dir(elev_speed[elev_it])
+        return out
+        """
+        for floor, buttons in floors:
 
-                fs = -1
+            
+        return out"""
 
-                # check if elev can serve the call
-                if (not self.can_serve(call["floor"], elev_pos, elev_speed[elev_it])):
-                    fs = -2
+    def observation_to_elevator_list(self,observations):
+        position = observations["position"]
+        speeds =  observations["speed"]
+        buttons_inside = observations["buttons"]
+        elevator_amount = len(position)
+        max_acc = self.max_acceleration
 
-                # check if elevator is moving away from call
-                elif ((elev_pos - call["floor"]) * elev_dir > 1):
-                    fs = 1
+        elevator_list = []
+        for it, pos in enumerate(position):
+            elev = Elevator(it, pos, buttons_inside[it], speeds[it], max_acc)
+            elevator_list.append(elev)
 
-                # at this point elevator is moving towards us. Check if same direction as call
-                elif (elev_dir == 1 and call["type"] == "up") or (elev_dir == -1 and call["type"] == "down"):
-                    fs = (self.num_floors + 2) - d
+        return elevator_list
 
-                # check if direction is different from call
-                elif (elev_dir == 1 and call["type"] == "down") or (elev_dir == -1 and call["type"] == "up"):
-                    fs = (self.num_floors + 1) - d
 
-                # check if elevator is idle
-                elif (elev_dir == 0):
-                    fs = (self.num_floors + 1) - d
-                else:
-                    raise Exception("Should not happen")
 
-                fs_score.append(fs)
-                # print("Call at Floor:", call["floor"], " Elevator", elev_it, "\tFS:", fs,"\tN", N,"\td", d)
 
-            # Assign to the call the elevator with the max fs_score
-            max_fs = -np.inf
-            max_elevator = None
-            for fs_it, f in enumerate(fs_score):
+class Elevator:
+    def __init__(self, elevator_number, current_postion, buttons_inside, speed = 0, max_acceleration = 9999) -> None:
+        self.speed = speed
+        self.number = elevator_number
+        self.direction = self.calculate_direction(self.speed)
+        self.buttons_inside = buttons_inside
+        self.floors_to_serve = self.buttons_inside
+        self.position = current_postion
+        self.max_acceleration = max_acceleration
+        self.calls = []
 
-                if f > max_fs:
-                    max_elevator = fs_it
-                    max_fs = f
-                # break tie
-                elif f == max_fs:
-                    if abs(elev_positions[fs_it] - call["floor"]) < abs(elev_positions[max_elevator] - call["floor"]):
-                        max_elevator = fs_it
-                        max_fs = f
+    def can_serve(self,  position):
+        distance = abs(position - self.position)
+        min_distance_needed = (self.speed ** 2) / (2 * self.max_acceleration)
+        return (min_distance_needed <= distance)
 
-            # print("Call gets served by:", max_elevator)
-
-            call["elevator"] = max_elevator
-
-        target_result = []
-        to_serve_result = []
-
-        # calculate the target floor for each elevator
-        for elev_it, elev_pos in enumerate(elev_positions):
-            to_serve = set()
-
-            # elevator need to serve calls outside
-            for call in calls:
-                if call["elevator"] == elev_it:
-                    to_serve.add(call["floor"])
-
-            for inside_call_it, inside_call in enumerate(buttons_in[elev_it]):
-                if inside_call == True:
-                    to_serve.add(inside_call_it)
-
-            # print("Elevator ", elev_it, "serves: ", to_serve)
-
-            # if elevator has no call, then stopp at nearest one you can stopp at
-
-            to_serve_result.append(to_serve)
-            target = self.get_nearest_floor_to_serve(to_serve, elev_pos, elev_it, elev_speed)
-
-            if (target == -1):
-
-                elev_dir = self.calc_elev_dir(elev_speed[elev_it])
-
-                # the elevator has no call. Search nearest waiting floor in movement direction. If not moving then wait on current
-                if elev_dir == 0:
-                    target = int(elev_pos)
-                elif elev_dir == 1:
-                    stopps_in_dir = range(int(np.ceil(elev_pos)), (self.num_floors - 1))
-                    target = self.get_nearest_floor_to_serve(
-                        stopps_in_dir, elev_pos, elev_it, elev_speed)
-                elif elev_dir == -1:
-                    stopps_in_dir = range(0, int(np.floor(elev_pos)))
-                    target = self.get_nearest_floor_to_serve(
-                        stopps_in_dir, elev_pos, elev_it, elev_speed)
-
-                # still no target found, then search on all floors
-                if target == -1:
-                    stopps_in_dir = range(0, (self.num_floors - 1))
-                    target = self.get_nearest_floor_to_serve(
-                        stopps_in_dir, elev_pos, elev_it, elev_speed)
-
-            target_result.append(target)
-
-        return {"target": np.array(target_result), "to_serve": np.array(to_serve_result)}
-
-    def get_nearest_floor_to_serve(self, calling_floors, elev_pos, elev_it, elev_speed):
-        # check which floor the elevator has to serve is the nearet one and can be served
-        nearest_floor = -1
-        nearest_floor_distance = -1
-
-        for fts in calling_floors:
-            if not self.can_serve(fts, elev_pos, elev_speed[elev_it]):
-                continue
-
-            d = abs(elev_pos - fts)
-            # no initial set
-            if nearest_floor_distance == -1:
-                nearest_floor_distance = d
-                nearest_floor = fts
-                continue
-
-            # new best found
-            if nearest_floor_distance > d:
-                nearest_floor_distance = d
-                nearest_floor = fts
-
-        return nearest_floor
-
-    def calc_elev_dir(self, speed):
-        return np.sign(speed)
-
-    def can_serve(self, call_floor, elev_pos, elev_speed):
-        distance = abs(call_floor - elev_pos)
-        min_distance_needed = (elev_speed ** 2) / (2 * self.max_acceleration)
-        return min_distance_needed <= distance
+    def calculate_direction(self, speed): 
+        if speed == 0:
+            return 0
+        
+        else:
+            return (speed / abs(speed))
+        
+    def add_call(self, call):
+        self.calls.append(call)
