@@ -40,17 +40,12 @@ class NearestCar(Scheduler):
         # calculate for every call which elevator will serve it
         for call in calls:
 
-            best_elevator = self.elevators[0]  # default is 0
+            best_elevator = None
             best_fs_value = -999
 
             for elev in self.elevators:
                 fs = self.calc_fs(N, call["direction"], call["floor"], elev)
                 if fs > best_fs_value and (sum(elev.buttons_inside) == 0 or (elev.position <= call["floor"] <= target[elev.number]) or (elev.position >= call["floor"] >= target[elev.number])):
-                    best_fs_value = fs
-                    best_elevator = elev
-
-                # if equally good then take the nearest
-                elif fs == best_fs_value and (abs(elev.position - call["floor"]) < abs(best_elevator.position - call["floor"])):
                     best_fs_value = fs
                     best_elevator = elev
 

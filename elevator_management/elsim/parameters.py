@@ -1,9 +1,8 @@
 from typing import NewType
 
-
 # All time values in seconds
-DOOR_OPENING_TIME = 1
-DOOR_STAYING_OPEN_TIME = 4
+DOOR_OPENING_TIME = 2
+DOOR_STAYING_OPEN_TIME = 3
 
 FLOOR = NewType('FLOOR', int)
 TIME_SEC = NewType('TIME_SEC', float)

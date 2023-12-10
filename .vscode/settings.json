@@ -6,6 +6,12 @@
         "editor.defaultFormatter": "ms-python.autopep8",
         "editor.formatOnType": true
     },
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "always"
+    },
+    "isort.args": [
+        "--profile=black"
+    ],
     "python.testing.pytestArgs": [
         "elsim"
     ],

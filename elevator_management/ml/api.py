@@ -50,7 +50,7 @@ class ElevatorEnvironment(gym.Env):
                                                               random_seed=0,
                                                               speed_elevator=self.max_speed,
                                                               acceleration_elevator=self.max_acceleration,
-                                                              max_occupancy=self.max_occupancy)
+                                                              max_elevator_occupancy=self.max_occupancy)
 
         # generate the arrival data or read in trough path, TODO: needs to be changed
         self.simulator.init_simulation("data/w1_f9_1.0.1.csv")

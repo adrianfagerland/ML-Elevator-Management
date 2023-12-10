@@ -2,14 +2,13 @@ from time import sleep
 
 
 # def print_elevator(elev_positions, buttons_out, buttons_in, elev_speed, px, setup=False):
-def print_elevator(observations, previous_door_state, setup=False):
+def print_elevator(observations, previous_door_state, previous_action=None, setup=False):
     elev_positions = observations['position']
     buttons_out = observations['floors']
     buttons_in = observations['buttons']
     elev_speed = observations['speed']
     px = observations['elevators_occupancy']
     doors_state = observations['doors_state']
-
     i = len(buttons_out)
     print_str = "\n\nSimulation:" + " " * 30 + " \n"
     for k in range(len(buttons_out)):
@@ -28,14 +27,20 @@ def print_elevator(observations, previous_door_state, setup=False):
                     print_str += ("\t^")
                 elif elev_dir == -1:
                     print_str += ("\tv")
+                elif doors_state[e_it] == 0:
+                    print_str += ("\tx")
+                elif doors_state[e_it] == 1:
+                    print_str += ("\to")
+                    if previous_action is None:
+                        continue
+                    if previous_action['next_move'][e_it] == 1:
+                        print_str += ("^")
+                    elif previous_action['next_move'][e_it] == -1:
+                        print_str += ("v")
                 elif doors_state[e_it] < previous_door_state[e_it]:
                     print_str += (f"    {' '*(e_it == 0)}  >o<")
                 elif doors_state[e_it] > previous_door_state[e_it]:
                     print_str += (f"   {' '*(e_it == 0)}   <o>")
-                elif doors_state[e_it] == 0:
-                    print_str += ("\tx")
-                else:
-                    print_str += ("\to")
 
             else:
                 print_str += ("\t.")

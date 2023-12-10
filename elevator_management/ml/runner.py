@@ -1,9 +1,9 @@
 import time
 
 from ml.api import ElevatorEnvironment
+from ml.nearest_car import NearestCar
 from ml.scheduler import Scheduler
 from vis.console import print_elevator
-from ml.nearest_car import NearestCar
 
 
 class Runner():
@@ -30,17 +30,18 @@ class Runner():
         assert not visualize or step_size is not None
         door_state = self.observations['doors_state']
         print_elevator(self.observations, door_state, setup=True)
-        
+        previous_action = None
 
         while not self.done:
             if visualize:
-                print_elevator(self.observations, door_state)
+                print_elevator(self.observations, door_state, previous_action)
                 door_state = self.observations['doors_state']
 
                 time.sleep(step_size)
             # If needs decision is true => action to None therefore no elevator will have its target changed
             if (self.needs_decision):
                 action = self.algorithm.decide(self.observations, self.error)
+                previous_action = action
             else:
                 action = None
             # If visualize is true then we need to also pass step max_step_size
