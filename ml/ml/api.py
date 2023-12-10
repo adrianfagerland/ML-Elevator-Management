@@ -3,7 +3,6 @@ from gymnasium import spaces
 import numpy as np
 
 from elsim.elevator_simulator import ElevatorSimulator
-from stable_baselines3.common.env_checker import _check_obs
 # TODO adjust system enviroment to work with elevator_simulator
 
 
@@ -12,7 +11,7 @@ class ElevatorEnvironment(gym.Env):
 
     def __init__(self,
                  num_elevators: tuple[int, int] | int,
-                 num_floors: tuple[int, int] | int,
+                 num_floors: int,
                  render_mode=None,
                  max_speed=2,
                  max_acceleration=0.4,
@@ -24,10 +23,7 @@ class ElevatorEnvironment(gym.Env):
         else:
             self.num_elevators_range = num_elevators
 
-        if (type(num_floors) == int):
-            self.num_floors_range = [num_floors, num_floors + 1]
-        else:
-            self.num_floors_range = num_floors
+        self.num_floors = num_floors
 
         # Parameters that do not change troughout episodes
         self.max_speed = max_speed
@@ -46,7 +42,7 @@ class ElevatorEnvironment(gym.Env):
 
         # 1. choose num_elevators and num_floors for this episode
         self.episode_num_elevators = self.r.integers(*self.num_elevators_range)
-        self.episode_num_floors = self.r.integers(*self.num_floors_range)
+        self.episode_num_floors = self.num_floors
 
         self.simulator: ElevatorSimulator = ElevatorSimulator(num_elevators=self.episode_num_elevators,
                                                               num_floors=self.episode_num_floors,
@@ -64,7 +60,8 @@ class ElevatorEnvironment(gym.Env):
             except:
                 raise Exception("No data found!")
         # Define observation space Sequence
-        self.observation_space = spaces.Dict({
+        self.observation_space: spaces.Dict = spaces.Dict({
+            "num_elevators": spaces.Box(low=0, high=self.episode_num_elevators, dtype=np.uint8, seed=self._get_rnd_int()),
             "elevators": spaces.Sequence(
                 spaces.Dict({
                     "position": spaces.Box(low=0, high=self.episode_num_floors, dtype=np.float32, seed=self._get_rnd_int()),

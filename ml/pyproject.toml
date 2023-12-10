@@ -19,7 +19,7 @@ vis = { path = "../vis", develop = true }
 # gymnasium = "^0.26.2"
 # pygame = "^2.5.2"
 gymnasium = "^0.29.1"
-stable-baselines3 = "^2.1.0"
+#stable-baselines3 = "^2.1.0"
 
 
 [[tool.poetry.source]]
