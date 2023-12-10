@@ -7,7 +7,14 @@ START_TIME = datetime.datetime(2002, 12, 30, 0, 0, 0)
 SEED = 42
 
 
-def generate_arrivals(num_floors: int, num_elevators: int, density: float, num_arrivals: int, seed: int = SEED, start_time: datetime.datetime = START_TIME) -> Generator[Tuple[datetime.datetime, int, int], None, None]:
+def generate_arrivals(
+    num_floors: int,
+    num_elevators: int,
+    density: float,
+    num_arrivals: int,
+    seed: int = SEED,
+    start_time: datetime.datetime = START_TIME,
+) -> Generator[Tuple[datetime.datetime, int, int], None, None]:
     """A generator that yields tuples of the form (timestamp, startfloor, endfloor).
 
     Args:

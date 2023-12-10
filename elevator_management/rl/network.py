@@ -13,7 +13,7 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import gymnasium as gym
 
 
-env = gym.make('Elevator-v0', num_floors=20, num_elevators=5)
+env = gym.make("Elevator-v0", num_floors=20, num_elevators=5)
 check_env(env)
 
 
