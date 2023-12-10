@@ -4,11 +4,10 @@ from hmac import new
 from math import sqrt
 from random import Random
 
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
 from numpy import infty as INFTY
 from numpy import sign
 from typing_extensions import Self
-
-from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
 
 
 class Elevator:
@@ -67,14 +66,18 @@ class Elevator:
                  num_floors: int,
                  max_speed: float,
                  max_acceleration: float,
-                 num_passangers: int = 0,
+                 max_occupancy: int,
                  current_speed: float = 0):
 
         self.num_floors = num_floors
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
-        self.num_passangers = num_passangers
         self.target_position: int = int(current_position)
+        self.max_occupancy = max_occupancy
+        self.buttons: list = [0] * num_floors
+        # Each elevator has a list in which every current passanger is represented by a tuple
+        # each tuple consists of (arriving time, entry elevator time, target floor)
+        self.riders: list[tuple] = []
 
         # After arriving on target floor, will the elevator continue up (1) or down (-1) or not yet decided (0)?
         # This is set before arriving, but can be ignored by the next command. This information is
@@ -85,6 +88,36 @@ class Elevator:
         self.trajectory_list = [self.Trajectory(
             current_position, current_speed, 0)]
         self._time_target: float = INFTY
+
+    def get_num_passangers(self):
+        return len(self.riders)
+
+    def get_riders(self):
+        return self.riders
+
+    def add_rider(self, rider):
+        assert self.get_doors_open() == 1
+        self.riders.append(rider)
+        self.buttons[rider[2]] = 1
+
+    def vibe_check(self, arrived_floor):
+        """
+        Checks if the elevator is vibing.
+        If any of the riders is not vibing, the elevator is not vibing.
+        If all riders are vibing, the elevator is vibing.
+        Kicks out the ones that want to leave at this floor.
+        """
+        num_old_riders = len(self.riders)
+        self.riders = [rider for rider in self.riders if rider[2] != arrived_floor]
+        if num_old_riders != len(self.riders):
+            assert self.get_doors_open() == 1
+            self.buttons[arrived_floor] = 0
+
+    def get_num_possible_join(self):
+        return self.max_occupancy - self.get_num_passangers()
+
+    def get_buttons(self):
+        return self.buttons
 
     def set_target_position(self, new_target_position: int, next_movement: int):
         """ Set the next target position. Can be done while the elevator is moving (i.e., following a trajectorie). 
@@ -215,7 +248,7 @@ class Elevator:
                         pass
         # target position was reached
         # add open doors if needed
-        if self.num_passangers > 0 or self.next_movement != 0:
+        if self.get_num_passangers() > 0 or self.next_movement != 0:
             trajectory_step1 = self.trajectory_list[-1].copy().set_open(
                 1).set_doors_opening_direction(1).set_time(DOOR_OPENING_TIME)
             trajectory_step2 = self.trajectory_list[-1].copy().set_open(
