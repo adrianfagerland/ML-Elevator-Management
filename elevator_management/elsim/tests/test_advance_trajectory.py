@@ -1,6 +1,6 @@
-from elsim.elevator import Elevator
-from elsim.parameters import DOOR_STAYING_OPEN_TIME, INFTY, DOOR_OPENING_TIME
 import pytest
+from elsim.elevator import Elevator
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
 
 
 ####################

@@ -75,7 +75,7 @@ class Elevator:
         num_floors: int,
         max_speed: float,
         max_acceleration: float,
-        max_occupancy: int,
+        max_occupancy: int = 7,
         current_speed: float = 0,
     ):
         self.num_floors = num_floors
@@ -130,7 +130,7 @@ class Elevator:
     def get_buttons(self):
         return self.buttons
 
-    def set_target_position(self, new_target_position: int, next_movement: int):
+    def set_target_position(self, new_target_position: int, next_movement: int = 0):
         """Set the next target position. Can be done while the elevator is moving (i.e., following a trajectorie).
         Is not going to affect anything if the doors are currently opening as the doors will continue with their plan
         and will ask for a new target if the doors are fully openend.

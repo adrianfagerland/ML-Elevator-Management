@@ -1,6 +1,6 @@
-from elsim.elevator_simulator import ElevatorSimulator
+import numpy as np
 from elsim.elevator import Elevator
-from elsim.parameters import DOOR_STAYING_OPEN_TIME, INFTY, DOOR_OPENING_TIME
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
 
 ####################
 # TEST ARRIVAL TIME
@@ -161,8 +161,8 @@ def test_overshot_speed():
 
 def test_arrived_elevator():
     test_elevator = Elevator(4, 10, 2, 1)
-    assert test_elevator.get_time_to_target() == INFTY
+    assert test_elevator.get_time_to_target() == np.infty
     test_elevator.set_target_position(9)
     t = test_elevator.get_time_to_target()
     test_elevator.advance_simulation(t)
-    assert test_elevator.get_time_to_target() == INFTY
+    assert test_elevator.get_time_to_target() == np.infty
