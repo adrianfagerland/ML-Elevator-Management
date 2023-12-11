@@ -1,9 +1,8 @@
 import gymnasium as gym
 import numpy as np
 from elsim.elevator_simulator import ElevatorSimulator
-from gymnasium import spaces
-
 # TODO adjust system enviroment to work with elevator_simulator
+from gymnasium import spaces
 
 
 class ElevatorEnvironment(gym.Env):
@@ -12,7 +11,7 @@ class ElevatorEnvironment(gym.Env):
     def __init__(
         self,
         num_elevators: tuple[int, int] | int,
-        num_floors: tuple[int, int] | int,
+        num_floors: int,
         render_mode=None,
         max_speed=2,
         max_acceleration=0.4,
@@ -25,10 +24,7 @@ class ElevatorEnvironment(gym.Env):
         else:
             self.num_elevators_range = num_elevators
 
-        if type(num_floors) == int:
-            self.num_floors_range = [num_floors, num_floors + 1]
-        else:
-            self.num_floors_range = num_floors
+        self.num_floors = num_floors
 
         # Parameters that do not change troughout episodes
         self.max_speed = max_speed
@@ -39,12 +35,15 @@ class ElevatorEnvironment(gym.Env):
         self.reset()
 
     def reset(self, seed=None, options={}):
-        self.r = np.random.Generator(np.random.PCG64(seed))
+        # We need the following line to seed self.np_random
+        super().reset(seed=seed)
+
         # Initializes everything
+        self.r = np.random.Generator(np.random.PCG64(seed))
 
         # 1. choose num_elevators and num_floors for this episode
         self.episode_num_elevators = self.r.integers(*self.num_elevators_range)
-        self.episode_num_floors = self.r.integers(*self.num_floors_range)
+        self.episode_num_floors = self.num_floors
 
         self.simulator: ElevatorSimulator = ElevatorSimulator(
             num_elevators=self.episode_num_elevators,
@@ -52,7 +51,7 @@ class ElevatorEnvironment(gym.Env):
             random_seed=0,
             speed_elevator=self.max_speed,
             acceleration_elevator=self.max_acceleration,
-            max_elevator_occupancy=self.max_occupancy,
+            max_occupancy=self.max_occupancy,
         )
 
         # generate the arrival data or read in trough path, TODO: needs to be changed
@@ -108,14 +107,14 @@ class ElevatorEnvironment(gym.Env):
             seed=self._get_rnd_int(),
         )
         # Action space cannot be of type dict? for stable baseline3 learning algorithm different shape but contains the same information
-        """
+
         self.action_space = spaces.Dict(spaces={
             "target": spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
             "to_serve": spaces.MultiDiscrete([3] * self.episode_num_elevators)
         })
-        """
+
         # return initial observation and info
-        observations, _, _, _, info = self.simulator.reset_simulation()
+        observations, _, _, _, info = self.simulator.reset()
         return (observations, info)
 
     def _get_rnd_int(self):
@@ -138,12 +137,19 @@ class ElevatorEnvironment(gym.Env):
         # modify action list to dictionary if not correctly passed as parameter
         # needs to be handled as the policy can only output a list of values while dict is the default for all
         # conventional algorihtms, might not be the best place for this conversion (:shrug)
-        elif type(action) is not dict:
-            action_dict = {"target": action[::2], "next_move": action[1::2] - 1}
+        elif (not isinstance(action, dict)):
+            action_dict = {
+                "target": action[::2],
+                "to_serve": action[1::2] - 1
+            }
         else:
-            action_dict = action
-            # action_dict["next_move"] -= 1
-        # shift the next_move value to be in range [-1,1] instead of [0,2]
+
+            action_dict = {}
+            to_serve_copy = np.copy(action['to_serve']) - 1
+            target_copy = np.copy(action['target'])
+            action_dict["to_serve"] = to_serve_copy
+            action_dict['target'] = target_copy
+        # shift the to_serve value to be in range [-1,1] instead of [0,2]
 
         return self.simulator.step(action_dict, max_step_size=max_step_size)
 

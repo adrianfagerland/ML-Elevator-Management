@@ -1,7 +1,4 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
@@ -9,8 +6,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "justMyCode":false,
-            "console": "integratedTerminal",
+            "justMyCode": false,
+            "console": "integratedTerminal"
         },
         {
             "name": "Python: Simulator",
@@ -26,7 +23,26 @@
             "request": "launch",
             "module": "rl.network",
             "justMyCode": false,
+<<<<<<< HEAD
             "cwd": "${workspaceFolder}/elevator_management"
+=======
+            "cwd": "${workspaceFolder}/ml"
+        },
+        {
+            "name": "Python: PPO",
+            "type": "python",
+            "request": "launch",
+            "module": "rl.PPO-training",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/ml"
+        },
+        {
+            "name": "Python: File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "justMyCode": true
+>>>>>>> rl-observation-sequence
         }
     ]
 }
