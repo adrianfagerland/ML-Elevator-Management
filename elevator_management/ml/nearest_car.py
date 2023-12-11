@@ -18,7 +18,11 @@ class NearestCar(Scheduler):
         super().__init__(num_elevators, num_floors, max_speed, max_acceleration)
         self.elevators = [
             Elevator(
-                i, 0, max_acceleration=max_acceleration, buttons_inside=[0] * num_floors
+                i,
+                0,
+                max_acceleration=max_acceleration,
+                buttons_inside=[0] * num_floors,
+                door=0,
             )
             for i in range(num_elevators)
         ]
@@ -66,7 +70,7 @@ class NearestCar(Scheduler):
         while len(call_stack) > 0:
             call = call_stack.pop()
             fs_values = [
-                self.calc_fs(call["direction"], call["floor"], elev)
+                self.calc_fs(call["direction"], call["floor"], elev) - 0.1 * elev.door
                 for elev in elevators
             ]
             # cycle through elevators using the decreasing fs value
@@ -77,11 +81,11 @@ class NearestCar(Scheduler):
                     sum(elev.buttons_inside) == 0
                     or (
                         elev.position <= call["floor"] <= target[elev.number]
-                        and call["direction"] == -1
+                        and call["direction"] == 1
                     )
                     or (
                         elev.position >= call["floor"] >= target[elev.number]
-                        and call["direction"] == 1
+                        and call["direction"] == -1
                     )
                 ):
                     if (
@@ -147,6 +151,7 @@ class NearestCar(Scheduler):
             elevator.speed = observations["speed"][i]
             elevator.update_direction()
             elevator.buttons_inside = observations["buttons"][i]
+            elevator.door = observations["doors_state"][i]
 
 
 class Elevator:
@@ -156,6 +161,7 @@ class Elevator:
         current_postion=0,
         buttons_inside=[],
         speed=0,
+        door=[],
         max_acceleration=1,
     ) -> None:
         self.speed = speed
@@ -165,6 +171,7 @@ class Elevator:
         self.floors_to_serve = self.buttons_inside
         self.position: float = current_postion
         self.max_acceleration = max_acceleration
+        self.door: float = door
 
     def can_serve(self, position):
         distance = abs(position - self.position)
