@@ -1,12 +1,2 @@
 # Elevator management
-
-## Simulations
-
-- Elevators
-- Building
-- People
-
-## Algorithms
-
-- RL
-- Deterministic algorithm
+This is a Repository containing the code for our final project for THU Machine Learning W23. With the goal of testing a new network architecture for message combining in Multi-Agent Reinforcement Learning. The evaluation is done on a self-implemented gymnasium elevator group control environment. The main aspect of our analysis concerns the adaptiveness of our algorithm to major changes in the environment such as maintenance of one elevator car and how group communication of variable sizes can deal with these changes.

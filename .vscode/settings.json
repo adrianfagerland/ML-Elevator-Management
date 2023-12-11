@@ -3,9 +3,15 @@
     "python.analysis.autoImportCompletions": false,
     "[python]": {
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "ms-python.autopep8",
+        "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnType": true
     },
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "always"
+    },
+    "isort.args": [
+        "--profile=black"
+    ],
     "python.testing.pytestArgs": [
         "elsim"
     ],

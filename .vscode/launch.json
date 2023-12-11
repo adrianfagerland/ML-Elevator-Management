@@ -15,7 +15,7 @@
             "request": "launch",
             "module": "eval.main",
             "justMyCode": true,
-            "cwd": "${workspaceFolder}/eval"
+            "cwd": "${workspaceFolder}/elevator_management"
         },
         {
             "name": "Python: Network",
@@ -23,6 +23,9 @@
             "request": "launch",
             "module": "rl.network",
             "justMyCode": false,
+<<<<<<< HEAD
+            "cwd": "${workspaceFolder}/elevator_management"
+=======
             "cwd": "${workspaceFolder}/ml"
         },
         {
@@ -39,6 +42,7 @@
             "request": "launch",
             "program": "${file}",
             "justMyCode": true
+>>>>>>> rl-observation-sequence
         }
     ]
 }
