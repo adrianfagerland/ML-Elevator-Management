@@ -22,22 +22,22 @@ def script_alpha_lstm(
 ):
     """Returns a ScriptModule for the alpha LSTM module"""
 
-    stack_type = StackedLSTM
-    layer_type = alpha_LSTMLayer
+    stack_type = AlphaStackedLSTM
+    layer_type = Alpha_LSTMLayer
     dirs = 1
 
     return stack_type(
         num_layers,
         layer_type,
-        first_layer_args=[alpha_LSTMCell, input_size, hidden_size],
-        other_layer_args=[alpha_LSTMCell, hidden_size * dirs, hidden_size],
+        first_layer_args=[Alpha_LSTMCell, input_size, hidden_size],
+        other_layer_args=[Alpha_LSTMCell, hidden_size * dirs, hidden_size],
     )
 
 
 LSTMState = namedtuple("LSTMState", ["hx", "cx"])
 
 
-class alpha_LSTMCell(nn.Module):
+class Alpha_LSTMCell(nn.Module):
     def __init__(self, input_size, hidden_size):
         super().__init__()
         self.input_size = input_size
@@ -71,7 +71,7 @@ class alpha_LSTMCell(nn.Module):
         return hy, (hy, cy)
 
 
-class alpha_LSTMLayer(nn.Module):
+class Alpha_LSTMLayer(nn.Module):
     def __init__(self, cell, *cell_args):
         super().__init__()
         self.cell = cell(*cell_args)
@@ -94,7 +94,10 @@ def init_stacked_lstm(num_layers, layer, first_layer_args, other_layer_args):
     return nn.ModuleList(layers)
 
 
-class StackedLSTM(nn.Module):
+class AlphaStackedLSTM(nn.Module):
+    """
+    Does yet not work when multiple inputs are given at once.
+    """
     __constants__ = ["layers"]  # Necessary for iterating through self.layers
 
     def __init__(self, num_layers, layer, first_layer_args, other_layer_args):
@@ -104,16 +107,19 @@ class StackedLSTM(nn.Module):
         )
 
     def forward(
-        self, input: Tensor, states: List[Tuple[Tensor, Tensor]]
-    ) -> Tuple[Tensor, List[Tuple[Tensor, Tensor]]]:
-        # List[LSTMState]: One state per layer
-        output_states = jit.annotate(List[Tuple[Tensor, Tensor]], [])
+        self, input: Tensor, states: List[Tuple[Tensor, Tensor]], alpha: float = 1
+    ) -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
+
+        output_states_h = jit.annotate(List[Tensor], [])
+        output_states_c = jit.annotate(List[Tensor], [])
         output = input
-        # XXX: enumerate https://github.com/pytorch/pytorch/issues/14471
+
         i = 0
         for rnn_layer in self.layers:
             state = states[i]
-            output, out_state = rnn_layer(output, state)
-            output_states += [out_state]
+            state = (state[0].unsqueeze(0), state[1].unsqueeze(0))
+            output, out_state = rnn_layer(output, state, alpha)
+            output_states_h += [out_state[0].squeeze()]
+            output_states_c += [out_state[1].squeeze()]
             i += 1
-        return output, output_states
+        return output, (torch.stack(output_states_h), torch.stack(output_states_c))

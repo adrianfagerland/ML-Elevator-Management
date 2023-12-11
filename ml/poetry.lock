@@ -24,7 +24,7 @@ files = [
 
 [[package]]
 name = "elsim"
-version = "1.0.1"
+version = "1.0.3"
 description = ""
 optional = false
 python-versions = ">=3.10, <3.13"

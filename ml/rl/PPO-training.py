@@ -3,7 +3,7 @@ import gymnasium as gym
 import torch as th
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions import Categorical
+
 
 from rl.network import alphaLSTMNetwork, ElevatorNetwork, PRE_HIDDEN_SIZE, OUT_HIDDEN_SIZE
 
@@ -18,7 +18,7 @@ learning_rate = 0.0005
 gamma = 0.98
 lmbda = 0.95
 eps_clip = 0.1
-K_epoch = 2
+K_epoch = 1
 T_horizon = 20
 
 """
@@ -88,37 +88,55 @@ class PPO:
             h_in_lst.append(h_in)
             h_out_lst.append(h_out)
             done_mask = 0 if done else 1
-            done_lst.append([done_mask])
+            done_lst.append(done_mask)
 
-        fs, a, r, fs_prime, done_mask, prob_a = th.tensor(fs_lst, dtype=th.float), th.tensor(a_lst), \
-            th.tensor(r_lst), th.tensor(fs_prime_lst, dtype=th.float), \
-            th.tensor(done_lst, dtype=th.float), th.tensor(prob_a_lst)
+        done_mask = th.tensor(done_lst, dtype=th.float)
+        r = th.tensor(r_lst).squeeze(1)
+        log_prob_a = th.tensor(prob_a_lst)
         self.data = []
-        return fs, a, r, fs_prime, done_mask, prob_a, h_in_lst[0], h_out_lst[0]
+        a = a_lst
+        fs = th.stack(fs_lst)
+        fs.requires_grad = True
+        fs_prime = th.stack(fs_prime_lst)
+        fs_prime.requires_grad = True
+        return fs, a, r, fs_prime, done_mask, log_prob_a, h_in_lst[0], h_out_lst[0]
 
     def update_parameters(self):
-        s, a, r, s_prime, done_mask, prob_a, (h1_in, h2_in), (h1_out, h2_out) = self.make_batch()
-        first_hidden = (h1_in.detach(), h2_in.detach())
-        second_hidden = (h1_out.detach(), h2_out.detach())
+        s, a, r, s_prime, done_mask, log_prob_a, h_in_0, h_out_0 = self.make_batch()
+
+        # (h1_in, h2_in), (h1_out, h2_out) = h_in_0, h_out_0
+        # detach? first hidden state
+        hidden_states_0 = []
+        for ele_hidden_in_0 in h_in_0:
+            (pre_h, pre_c), (comm_h, comm_c) = ele_hidden_in_0
+            hidden_states_0.append(((pre_h.detach(), pre_c.detach()), (comm_h.detach(), comm_c.detach())))
+        # detach? first hidden state
+        hidden_states_1 = []
+        for ele_hidden_in_0 in h_out_0:
+            (pre_h, pre_c), (_, _) = ele_hidden_in_0
+            hidden_states_1.append(((pre_h.detach(), pre_c.detach()), 0))
 
         for i in range(K_epoch):
-            v_prime = self.model.forward_critic(s_prime, second_hidden).squeeze(1)
+            v_prime, _ = self.model.forward_critic(s_prime, hidden_states_1)
+
             td_target = r + gamma * v_prime * done_mask
-            v_s = self.model.forward_critic(s, first_hidden).squeeze(1)
+            v_s, _ = self.model.forward_critic(s, hidden_states_0)
             delta = td_target - v_s
             delta = delta.detach().numpy()
 
             advantage_lst = []
             advantage = 0.0
             for item in delta[::-1]:
-                advantage = gamma * lmbda * advantage + item[0]
+                advantage = gamma * lmbda * advantage + item
                 advantage_lst.append([advantage])
             advantage_lst.reverse()
             advantage = th.tensor(advantage_lst, dtype=th.float)
 
-            pi, _ = self.model.forward_actor(s, first_hidden)
-            pi_a = pi.squeeze(1).gather(1, a)
-            ratio = th.exp(th.log(pi_a) - th.log(prob_a))  # a/b == log(exp(a)-exp(b))
+            pi, _ = self.model.forward_actor(s, hidden_states_0)
+
+            log_prob_a_prime = self.model.get_log_prob(pi, a)
+
+            ratio = th.exp(log_prob_a_prime - log_prob_a)  # a/b == log(exp(a)-exp(b))
 
             surr1 = ratio * advantage
             surr2 = th.clamp(ratio, 1-eps_clip, 1+eps_clip) * advantage
@@ -137,22 +155,23 @@ class PPO:
 
             s, _ = env.reset()  # this determines how many elevators for this episode
             done = False
-            num_elevators = s['num_elevators']
-            hidden_inf_out = [self.model.generate_empty_hidden_state() for _ in range(num_elevators)]
+            num_elevators = s['num_elevators'][0]
+            hidden_inf_out = [self.model._generate_empty_hidden_state() for _ in range(num_elevators)]
             while not done:
                 for t in range(T_horizon):
                     hidden_inf_in = hidden_inf_out
                     fs = self.model.extract_features(s)
                     prob, hidden_inf_out = self.model.forward_actor(fs, hidden_inf_in)
-                    prob = prob.view(-1)
-                    m = Categorical(prob)
-                    a = m.sample().item()
+
+                    a, log_prob_a = self.model.generate_action_from_output(prob)
+
                     s_prime, r, done, truncated, info = env.step(a)
                     fs_prime = self.model.extract_features(s_prime)
                     # convert r to float (otherwise ide doesnt understand)
                     r = float(r)
+                    # get probability of action a
 
-                    self.put_data((fs, a, r/100.0, fs_prime, prob[a].item(), hidden_inf_in, hidden_inf_out, done))
+                    self.put_data((fs, a, r/100.0, fs_prime, log_prob_a, hidden_inf_in, hidden_inf_out, done))
                     s = s_prime
 
                     score += r
