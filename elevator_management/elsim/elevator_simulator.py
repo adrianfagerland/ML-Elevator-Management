@@ -77,25 +77,27 @@ class ElevatorSimulator:
         # Each elevator has a list in which every current passanger is represented by a tuple
         # each tuple consists of (arriving time, entry elevator time, target floor)
         self.elevator_riding_list: list[list[tuple[float, float, int]]] = [
-            list() for _ in range(self.num_elevators)]
+            list() for _ in range(self.num_elevators)
+        ]
         self.elevator_buttons_list = [
-            [0 for _ in range(self.num_floors)] for _ in range(self.num_elevators)]
+            [0 for _ in range(self.num_floors)] for _ in range(self.num_elevators)
+        ]
 
         # TODO update buttons press to link to waiting queue length
         # up and down buttons on each floor
         self.floor_buttons_pressed_up = [0 for _ in range(self.num_floors)]
         self.floor_buttons_pressed_down = [0 for _ in range(self.num_floors)]
 
-    def get_floor_buttons_pressed_down(self):
-        return [
-            0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_down
-        ]
+        # loss parameters
+        self.decay_rate = 0.02  # 1minute ^= 30%
 
     def get_floor_buttons_pressed_up(self):
         return [0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_up]
 
     def get_floor_buttons_pressed_down(self):
-        return [0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_down]
+        return [
+            0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_down
+        ]
 
     def read_in_people_data(self, path: str):
         """Reads the csv file of the arrivals. Stores the arrivals in self.arrivals.
@@ -289,13 +291,12 @@ class ElevatorSimulator:
                     self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
     def step(self, actions, max_step_size=None) -> tuple:
-
-                # find spot to insert new arrival
-                i = self.next_arrival_index
-                while (i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time):
-                    i += 1
-                for start_time, end_floor in target_queue[arrived_floor]:
-                    self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
+        # find spot to insert new arrival
+        i = self.next_arrival_index
+        while i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time:
+            i += 1
+        for start_time, end_floor in target_queue[arrived_floor]:
+            self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
     def step(self, actions, max_step_size=None) -> tuple:
         # if action is defined => execute the actions by sending them to the elevators
