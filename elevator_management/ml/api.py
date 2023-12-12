@@ -69,6 +69,22 @@ class ElevatorEnvironment(gym.Env):
                 shape=(1,), 
                 dtype=np.uint8, 
                 seed=self._get_rnd_int()),
+
+            "time": spaces.Dict({
+                    "time_since_last_seconds": spaces.Box(
+                        low=0, 
+                        high=60, 
+                        shape=(1,), 
+                        dtype=np.float32, 
+                        seed=self._get_rnd_int()),
+                    "time_since_last_minutes": spaces.Box(
+                        low=0, 
+                        high=60, 
+                        shape=(1,), 
+                        dtype=np.float32, 
+                        seed=self._get_rnd_int()),
+                }),
+
             "elevators":spaces.Sequence(
                 spaces.Dict({    
                     "position": spaces.Box(
@@ -91,7 +107,20 @@ class ElevatorEnvironment(gym.Env):
                     "target": spaces.Discrete(
                         n=self.num_floors,
                         seed=self._get_rnd_int()
-                    )
+                    ),
+                    "doors_state":spaces.Box(
+                        low=0,
+                        high=1,
+                        shape=(1,),
+                        dtype=np.float32,
+                        seed=self._get_rnd_int()
+                    ),
+                    "doors_moving_direction": spaces.Box(
+                        low=-1,
+                        high=1,
+                        shape=(1,),
+                        seed=self._get_rnd_int()
+                    ),
                 })
             )
         })
@@ -106,7 +135,10 @@ class ElevatorEnvironment(gym.Env):
                     [self.episode_num_floors] * self.episode_num_elevators,
                     seed=self._get_rnd_int(),
                 ),
-                "next_move": spaces.MultiDiscrete([3] * self.episode_num_elevators),
+                "next_move": spaces.MultiDiscrete(
+                    [3] * self.episode_num_elevators, 
+                    start=[-1] * self.episode_num_elevators
+                ),
             }
         )
 

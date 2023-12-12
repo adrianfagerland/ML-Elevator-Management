@@ -2,7 +2,6 @@ import time
 
 import numpy as np
 from ml.api import ElevatorEnvironment
-from ml.nearest_car import NearestCar
 from ml.scheduler import Scheduler
 from vis.console import print_elevator
 
@@ -47,7 +46,7 @@ class Runner:
 
         while not self.done:
             if visualize:
-                print_elevator(self.observations, skipped_time, previous_action)
+                print_elevator(self.observations, skipped_time=skipped_time, previous_action=previous_action)
                 if previous_observation is not None and not all(
                     [
                         np.all(previous_observation[key] == self.observations[key])

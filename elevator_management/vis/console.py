@@ -1,13 +1,26 @@
-def print_elevator(observations, skipped_time, previous_action=None, setup=False):
-    elev_positions = observations["position"]
+import numpy as np
+
+
+def print_elevator(observations, skipped_time=1, previous_action=None, setup=False):
+
+
+    elev_positions = np.concatenate([x['position'] for x in observations['elevators']])
     buttons_out = observations["floors"]
-    buttons_in = observations["buttons"]
-    elev_speed = observations["speed"]
-    px = observations["elevators_occupancy"]
-    doors_state = observations["doors_state"]
-    doors_moving_direction = observations["doors_moving_direction"]
+    buttons_in = np.array([x['buttons'] for x in observations['elevators']])
+    elev_speed = np.concatenate([x['speed'] for x in observations['elevators']])
+
+    doors_state = np.concatenate([x['doors_state'] for x in observations['elevators']])
+    doors_moving_direction = np.concatenate([x['doors_moving_direction'] for x in observations['elevators']])
+    targets = np.array([x['target'] for x in observations['elevators']])
+
+    time_obs = observations['time']
+
+
     i = len(buttons_out)
     print_str = ""
+
+    print_str += f"Time {int(time_obs['time_since_last_minutes'][0])}:{int(time_obs['time_since_last_seconds'][0])}\n"
+
     for _ in range(len(buttons_out)):
         i = i - 1
         # make sure that the length of i printed is the same
@@ -59,7 +72,8 @@ def print_elevator(observations, skipped_time, previous_action=None, setup=False
             if f == True:
                 board_str += str(f_it)
             print_str += " " * (3 - len(board_str)) + board_str
-        print_str += "Souls on board:" + str(px[e_it]) + "\n"
+        #print_str += "Souls on board:" + str(px[e_it]) + "\n"
+        print_str += "Target:" + str(targets[e_it]) + "\n"
 
     if not setup:
         num_lines = len(buttons_out) + len(buttons_in)
