@@ -116,8 +116,7 @@ class ElevatorEnvironment(gym.Env):
         )
 
         # return initial observation and info
-        observations, _, _, _, info = self.simulator.reset_simulation()
-        return (observations, info)
+        return self.simulator.reset_simulation()
 
     def _get_rnd_int(self):
         return int(self.r.integers(0, int(1e6)))
