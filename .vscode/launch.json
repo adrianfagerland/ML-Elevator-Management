@@ -23,10 +23,7 @@
             "request": "launch",
             "module": "rl.network",
             "justMyCode": false,
-<<<<<<< HEAD
             "cwd": "${workspaceFolder}/elevator_management"
-=======
-            "cwd": "${workspaceFolder}/ml"
         },
         {
             "name": "Python: PPO",
@@ -34,7 +31,7 @@
             "request": "launch",
             "module": "rl.PPO-training",
             "justMyCode": false,
-            "cwd": "${workspaceFolder}/ml"
+            "cwd": "${workspaceFolder}/elevator_management"
         },
         {
             "name": "Python: File",
@@ -42,7 +39,6 @@
             "request": "launch",
             "program": "${file}",
             "justMyCode": true
->>>>>>> rl-observation-sequence
         }
     ]
 }
