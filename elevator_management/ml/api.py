@@ -21,9 +21,11 @@ class ElevatorEnvironment(gym.Env):
         self.dtype = np.float32
         # Handle the possible two ways to input the parameters of the enviroment: fixed (#elevators/#floors) or a range
         if type(num_elevators) == int:
-            self.num_elevators_range = [num_elevators, num_elevators + 1]
+            assert type(num_elevators) == int
+            self.num_elevators_range: tuple[int, int] = (num_elevators, num_elevators + 1)
         else:
-            self.num_elevators_range = num_elevators
+            assert type(num_elevators) == tuple[int, int]
+            self.num_elevators_range: tuple[int, int] = num_elevators
 
         self.num_floors = num_floors
 
@@ -58,49 +60,42 @@ class ElevatorEnvironment(gym.Env):
         # generate the arrival data or read in trough path, TODO: needs to be changed
         self.simulator.init_simulation("data/w1_f9_1.0.1.csv")
         # Define observation space
-        self.observation_space = spaces.Dict(
-            {
-                "position": spaces.Box(
-                    low=0,
-                    high=self.episode_num_floors,
-                    shape=(self.episode_num_elevators,),
-                    dtype=np.float32,
-                    seed=self._get_rnd_int(),
-                ),
-                "speed": spaces.Box(
-                    low=-self.max_speed,
-                    high=self.max_speed,
-                    shape=(self.episode_num_elevators,),
-                    dtype=np.float32,
-                    seed=self._get_rnd_int(),
-                ),
-                "doors_state": spaces.Box(
-                    low=0,
-                    high=1,
-                    shape=(self.episode_num_elevators,),
-                    dtype=np.float32,
-                    seed=self._get_rnd_int(),
-                ),
-                "buttons": spaces.MultiBinary(
-                    (self.episode_num_elevators, self.episode_num_floors),
-                    seed=self._get_rnd_int(),
-                ),
-                "floors": spaces.MultiBinary(
-                    (self.episode_num_floors, 2), seed=self._get_rnd_int()
-                ),
-                "elevators_occupancy": spaces.MultiDiscrete(
-                    [self.max_occupancy] * self.episode_num_elevators,
-                    seed=self._get_rnd_int(),
-                ),
-                "doors_moving_direction": spaces.MultiDiscrete(
-                    [3] * self.episode_num_elevators, seed=self._get_rnd_int()
-                ),
-                "target": spaces.MultiDiscrete(
-                    [self.episode_num_floors] * self.episode_num_elevators,
-                    seed=self._get_rnd_int(),
-                ),
-            }
-        )
+        self.observation_space = spaces.Dict({
+            "floors": spaces.MultiBinary(
+                    (self.episode_num_floors, 2), seed=self._get_rnd_int()),
+            "num_elevators": spaces.Box(
+                low=0, 
+                high=self.num_elevators_range[1], 
+                shape=(1,), 
+                dtype=np.uint8, 
+                seed=self._get_rnd_int()),
+            "elevators":spaces.Sequence(
+                spaces.Dict({    
+                    "position": spaces.Box(
+                        low=0,
+                        high=self.episode_num_floors,
+                        shape=(1,),
+                        dtype=np.float32,
+                        seed=self._get_rnd_int()),
+                    "speed": spaces.Box(
+                        low=-self.max_speed,
+                        high=self.max_speed,
+                        shape=(1,),
+                        dtype=np.float32,
+                        seed=self._get_rnd_int(),
+                    ),
+                    "buttons": spaces.MultiBinary(
+                        (self.episode_num_floors,),
+                        seed=self._get_rnd_int(),
+                    ),
+                    "target": spaces.Discrete(
+                        n=self.num_floors,
+                        seed=self._get_rnd_int()
+                    )
+                })
+            )
+        })
+
 
         # Define action space
         # Action space cannot be of type dict? for stable baseline3 learning algorithm different shape but contains the same information
@@ -115,8 +110,9 @@ class ElevatorEnvironment(gym.Env):
             }
         )
 
-        # return initial observation and info
+
         return self.simulator.reset_simulation()
+
 
     def _get_rnd_int(self):
         return int(self.r.integers(0, int(1e6)))
@@ -151,6 +147,9 @@ class ElevatorEnvironment(gym.Env):
         return self.simulator.step(action_dict, max_step_size=max_step_size)
 
     def _set_seed(self, seed):
+        pass
+
+    def render(self):
         pass
 
 

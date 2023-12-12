@@ -7,7 +7,13 @@ import torch as th
 import torch.nn.functional as F
 import torch.optim as optim
 from gymnasium.utils.env_checker import check_env
-from rl.network import ElevatorNetwork, alphaLSTMNetwork
+from rl.network import (
+    OUT_HIDDEN_SIZE,
+    PRE_HIDDEN_SIZE,
+    ElevatorNetwork,
+    alphaLSTMNetwork,
+)
+
 
 # Hyperparameters
 learning_rate = 0.0005
