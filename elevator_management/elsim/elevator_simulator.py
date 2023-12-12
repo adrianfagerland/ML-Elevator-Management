@@ -291,14 +291,6 @@ class ElevatorSimulator:
                     self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
     def step(self, actions, max_step_size=None) -> tuple:
-        # find spot to insert new arrival
-        i = self.next_arrival_index
-        while i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time:
-            i += 1
-        for start_time, end_floor in target_queue[arrived_floor]:
-            self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
-
-    def step(self, actions, max_step_size=None) -> tuple:
         # if action is defined => execute the actions by sending them to the elevators
         if actions is not None:
             targets = actions["target"]
