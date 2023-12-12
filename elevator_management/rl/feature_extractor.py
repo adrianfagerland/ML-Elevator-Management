@@ -1,12 +1,14 @@
 import gymnasium as gym
-import torch as th
-from torch import nn
-# from torchrl.data.utils import TensorD
-from gymnasium import spaces
-from gymnasium.spaces import flatdim, flatten
+
 # from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 # from stable_baselines3.common.type_aliases import TensorDict
 import numpy as np
+import torch as th
+
+# from torchrl.data.utils import TensorD
+from gymnasium import spaces
+from gymnasium.spaces import flatdim, flatten
+from torch import nn
 
 
 class ElevatorFeatureExtractor:
@@ -24,7 +26,7 @@ class ElevatorFeatureExtractor:
         # Figure out the size of data (elevator specific vs group specific)
         # relevant keywords for both data sets
         # data that is specific to an elevator
-        self.elevator_keywords = ['position', 'speed', 'doors_state', 'buttons', 'elevators_occupancy', 'target']
+        self.elevator_keywords = ['position', 'speed', 'buttons', 'target']
         # and data that is non-specific to an elevator
         self.group_keywords = ['floors']  # will soon contain more (time, weekday, ...)
 

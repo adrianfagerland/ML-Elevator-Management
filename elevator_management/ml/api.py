@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 from elsim.elevator_simulator import ElevatorSimulator
+
 # TODO adjust system enviroment to work with elevator_simulator
 from gymnasium import spaces
 
@@ -20,9 +21,11 @@ class ElevatorEnvironment(gym.Env):
         self.dtype = np.float32
         # Handle the possible two ways to input the parameters of the enviroment: fixed (#elevators/#floors) or a range
         if type(num_elevators) == int:
-            self.num_elevators_range = [num_elevators, num_elevators + 1]
+            assert type(num_elevators) == int
+            self.num_elevators_range: tuple[int, int] = (num_elevators, num_elevators + 1)
         else:
-            self.num_elevators_range = num_elevators
+            assert type(num_elevators) == tuple[int, int]
+            self.num_elevators_range: tuple[int, int] = num_elevators
 
         self.num_floors = num_floors
 
@@ -51,55 +54,48 @@ class ElevatorEnvironment(gym.Env):
             random_seed=0,
             speed_elevator=self.max_speed,
             acceleration_elevator=self.max_acceleration,
-            max_occupancy=self.max_occupancy,
+            max_elevator_occupancy=self.max_occupancy,
         )
 
         # generate the arrival data or read in trough path, TODO: needs to be changed
         self.simulator.init_simulation("data/w1_f9_1.0.1.csv")
         # Define observation space
-        self.observation_space = spaces.Dict(
-            {
-                "position": spaces.Box(
-                    low=0,
-                    high=self.episode_num_floors,
-                    shape=(self.episode_num_elevators,),
-                    dtype=np.float32,
-                    seed=self._get_rnd_int(),
-                ),
-                "speed": spaces.Box(
-                    low=-self.max_speed,
-                    high=self.max_speed,
-                    shape=(self.episode_num_elevators,),
-                    dtype=np.float32,
-                    seed=self._get_rnd_int(),
-                ),
-                "doors_state": spaces.Box(
-                    low=0,
-                    high=1,
-                    shape=(self.episode_num_elevators,),
-                    dtype=np.float32,
-                    seed=self._get_rnd_int(),
-                ),
-                "buttons": spaces.MultiBinary(
-                    (self.episode_num_elevators, self.episode_num_floors),
-                    seed=self._get_rnd_int(),
-                ),
-                "floors": spaces.MultiBinary(
-                    (self.episode_num_floors, 2), seed=self._get_rnd_int()
-                ),
-                "elevators_occupancy": spaces.MultiDiscrete(
-                    [self.max_occupancy] * self.episode_num_elevators,
-                    seed=self._get_rnd_int(),
-                ),
-                "doors_moving_direction": spaces.MultiDiscrete(
-                    [3] * self.episode_num_elevators, seed=self._get_rnd_int()
-                ),
-                "target": spaces.MultiDiscrete(
-                    [self.episode_num_floors] * self.episode_num_elevators,
-                    seed=self._get_rnd_int(),
-                ),
-            }
-        )
+        self.observation_space = spaces.Dict({
+            "floors": spaces.MultiBinary(
+                    (self.episode_num_floors, 2), seed=self._get_rnd_int()),
+            "num_elevators": spaces.Box(
+                low=0, 
+                high=self.num_elevators_range[1], 
+                shape=(1,), 
+                dtype=np.uint8, 
+                seed=self._get_rnd_int()),
+            "elevators":spaces.Sequence(
+                spaces.Dict({    
+                    "position": spaces.Box(
+                        low=0,
+                        high=self.episode_num_floors,
+                        shape=(1,),
+                        dtype=np.float32,
+                        seed=self._get_rnd_int()),
+                    "speed": spaces.Box(
+                        low=-self.max_speed,
+                        high=self.max_speed,
+                        shape=(1,),
+                        dtype=np.float32,
+                        seed=self._get_rnd_int(),
+                    ),
+                    "buttons": spaces.MultiBinary(
+                        (self.episode_num_floors,),
+                        seed=self._get_rnd_int(),
+                    ),
+                    "target": spaces.Discrete(
+                        n=self.num_floors,
+                        seed=self._get_rnd_int()
+                    )
+                })
+            )
+        })
+
 
         # Define action space
         self.action_space = spaces.MultiDiscrete(
@@ -114,7 +110,7 @@ class ElevatorEnvironment(gym.Env):
         })
 
         # return initial observation and info
-        observations, _, _, _, info = self.simulator.reset()
+        observations, _, _, _, info = self.simulator.reset_simulation()
         return (observations, info)
 
     def _get_rnd_int(self):
@@ -154,6 +150,9 @@ class ElevatorEnvironment(gym.Env):
         return self.simulator.step(action_dict, max_step_size=max_step_size)
 
     def _set_seed(self, seed):
+        pass
+
+    def render(self):
         pass
 
 

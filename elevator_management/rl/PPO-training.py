@@ -1,17 +1,18 @@
 # PPO-LSTM
+from typing import Type
+
 import gymnasium as gym
+import ml.api  # needs to be imported for the env registration
 import torch as th
 import torch.nn.functional as F
 import torch.optim as optim
-
-
-from rl.network import alphaLSTMNetwork, ElevatorNetwork, PRE_HIDDEN_SIZE, OUT_HIDDEN_SIZE
-
-from typing import Type
-
 from gymnasium.utils.env_checker import check_env
-
-import ml.api  # needs to be imported for the env registration
+from rl.network import (
+    OUT_HIDDEN_SIZE,
+    PRE_HIDDEN_SIZE,
+    ElevatorNetwork,
+    alphaLSTMNetwork,
+)
 
 # Hyperparameters
 learning_rate = 0.0005

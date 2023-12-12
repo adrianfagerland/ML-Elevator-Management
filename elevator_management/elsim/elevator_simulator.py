@@ -142,31 +142,16 @@ class ElevatorSimulator:
         self.next_arrival_index = 0
 
     def return_observations(self, step_size):
-        elevator_doors = np.array(
-            [elevator.get_doors_open() for elevator in self.elevators], dtype=np.float32
-        )
-        doors_moving_direction = np.array(
-            [elevator.get_doors_moving_direction() for elevator in self.elevators],
-            dtype=np.int8,
-        )
-        elevator_positions = np.array(
-            [elevator.get_position() for elevator in self.elevators], dtype=np.float32
-        )
-        elevator_speed = np.array(
-            [elevator.get_speed() for elevator in self.elevators], dtype=np.float32
-        )
+        
+        elevator_data = []
+        for elevator in self.elevators:
+            elevator_data.append({
+                "position":np.array([elevator.get_position()], dtype=np.float32),
+                "speed": np.array([elevator.get_speed()], dtype=np.float32),
+                "target": np.array(elevator.get_target_position()),
+                "buttons": np.array(elevator.get_buttons())
+            })
 
-        elevator_buttons = np.array(
-            [elevator.get_buttons() for elevator in self.elevators], dtype=np.int8
-        )
-        elevator_target = np.array(
-            [elevator.get_target_position() for elevator in self.elevators],
-            dtype=np.int8,
-        )
-        occupancy_list = np.array(
-            [elevator.get_num_passangers() for elevator in self.elevators],
-            dtype=np.int8,
-        )
         floor_buttons = np.array(
             list(
                 zip(
@@ -179,16 +164,13 @@ class ElevatorSimulator:
 
         loss = self.loss_calculation(step_size)
 
+        
+
         # create dictionary with corrects types expected from gymnasium
         observations = {
-            "position": elevator_positions,
-            "speed": elevator_speed,
-            "doors_state": elevator_doors,
-            "doors_moving_direction": doors_moving_direction,
-            "buttons": elevator_buttons,
-            "target": elevator_target,
             "floors": floor_buttons,
-            "elevators_occupancy": occupancy_list,
+            "num_elevators": np.array([self.num_elevators], dtype=np.uint8),
+            "elevators": tuple(elevator_data)
         }
         #       observation   reward  terminated? truncated? info
         return (observations, -loss, self.done, False, {"needs_decision": True})
@@ -289,7 +271,7 @@ class ElevatorSimulator:
                     i += 1
                 for start_time, end_floor in target_queue[arrived_floor]:
                     self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
-
+    """
     def step(self, actions, max_step_size=None) -> tuple:
         # find spot to insert new arrival
         i = self.next_arrival_index
@@ -297,12 +279,13 @@ class ElevatorSimulator:
             i += 1
         for start_time, end_floor in target_queue[arrived_floor]:
             self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
+    """
 
     def step(self, actions, max_step_size=None) -> tuple:
         # if action is defined => execute the actions by sending them to the elevators
         if actions is not None:
             targets = actions["target"]
-            next_movements = actions["next_move"]
+            next_movements = actions["to_serve"]
             for i, elevator in enumerate(self.elevators):
                 elevator.set_target_position(targets[i], next_movements[i])
                 if (
