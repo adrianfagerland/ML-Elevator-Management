@@ -14,7 +14,6 @@ from rl.network import (
     alphaLSTMNetwork,
 )
 
-
 # Hyperparameters
 learning_rate = 0.0005
 gamma = 0.98

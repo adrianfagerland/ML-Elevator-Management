@@ -4,7 +4,7 @@ from random import Random
 
 import numpy as np
 from elsim.elevator import Elevator
-from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, LOSS_FACTOR
 
 
 class ElevatorSimulator:
@@ -163,7 +163,9 @@ class ElevatorSimulator:
 
         loss = self.loss_calculation(step_size)
 
-        
+        # a dictionary for info, should be used to pass information about the run from
+        # then env to an algorithm for logging
+        info_dictionary = {'needs_decision':needs_decision}
 
         # create dictionary with corrects types expected from gymnasium
         observations = {
@@ -172,13 +174,14 @@ class ElevatorSimulator:
             "elevators": tuple(elevator_data)
         }
         #       observation   reward  terminated? truncated? info
-        return (observations, -loss, self.done, False, needs_decision)
+        return (observations, -loss, self.done, False, info_dictionary)
 
     def reset_simulation(self):
         """Resets the simulation by bringing simulation back into starting state"""
         # TODO
         self.done = False
-        return self.get_observations(step_size=0)
+        obs, _, _, _, info = self.get_observations(step_size=0)
+        return obs, info
 
     def loss_calculation(self, time_step: float) -> float:
         """Calculates the loss afte calling the step() function for the current step()
@@ -189,6 +192,10 @@ class ElevatorSimulator:
         Returns:
             float: [the complete loss scaled down for a reasonable size]
         """
+
+
+
+
         total_loss = 0
 
         # loop over all person and add their ind_loss to total loss
@@ -202,7 +209,7 @@ class ElevatorSimulator:
                 total_loss += self._ind_loss(time_step, waiting_person[0])
 
         # also punish elevator movement
-        return total_loss
+        return total_loss / LOSS_FACTOR
 
     def _ind_loss(self, time_step: float, x_0: float) -> float:
         """Calculates the loss that an indiviual person contributes to the total loss.

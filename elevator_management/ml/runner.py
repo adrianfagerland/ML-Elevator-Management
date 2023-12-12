@@ -78,6 +78,7 @@ class Runner:
             reward,
             self.done,
             self.truncated,
-            self.needs_decision,
+            info_dict,
         ) = observations
+        self.needs_decision = info_dict['needs_decision']
         self.error += reward

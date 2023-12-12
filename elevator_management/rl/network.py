@@ -380,9 +380,3 @@ class alphaLSTMNetwork(ElevatorNetwork):
             raise Exception()
 
 
-class Drop_Arg(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x: th.Tensor, y) -> th.Tensor:
-        return x
