@@ -141,8 +141,7 @@ class ElevatorSimulator:
         self.world_time = 0
         self.next_arrival_index = 0
 
-    def return_observations(self, step_size):
-        
+    def get_observations(self, step_size, needs_decision=True) -> tuple:
         elevator_data = []
         for elevator in self.elevators:
             elevator_data.append({
@@ -173,13 +172,13 @@ class ElevatorSimulator:
             "elevators": tuple(elevator_data)
         }
         #       observation   reward  terminated? truncated? info
-        return (observations, -loss, self.done, False, {"needs_decision": True})
+        return (observations, -loss, self.done, False, needs_decision)
 
     def reset_simulation(self):
         """Resets the simulation by bringing simulation back into starting state"""
         # TODO
         self.done = False
-        return self.return_observations(step_size=0)
+        return self.get_observations(step_size=0)
 
     def loss_calculation(self, time_step: float) -> float:
         """Calculates the loss afte calling the step() function for the current step()
@@ -271,17 +270,10 @@ class ElevatorSimulator:
                     i += 1
                 for start_time, end_floor in target_queue[arrived_floor]:
                     self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
-    """
-    def step(self, actions, max_step_size=None) -> tuple:
-        # find spot to insert new arrival
-        i = self.next_arrival_index
-        while i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time:
-            i += 1
-        for start_time, end_floor in target_queue[arrived_floor]:
-            self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
-    """
 
+                    
     def step(self, actions, max_step_size=None) -> tuple:
+
         # if action is defined => execute the actions by sending them to the elevators
         if actions is not None:
             targets = actions["target"]
@@ -337,12 +329,7 @@ class ElevatorSimulator:
                 elevator.advance_simulation(max_step_size)
                 self._handle_arrivals_departures(elevator)
             self.world_time += max_step_size
-            # generate observation and add to information "needs_decision" flag
-            observation, reward, terminated, truncated, info = self.return_observations(
-                step_size=max_step_size
-            )
-            info["needs_decision"] = False
-            return observation, reward, terminated, truncated, info
+            return self.get_observations(step_size=max_step_size, needs_decision=False)
 
         step_size = next_arrival - self.world_time
         if next_arrival < self.world_time + next_elevator_time:
@@ -370,7 +357,7 @@ class ElevatorSimulator:
             next_elevator.vibe_check(arrived_floor=next_elevator.get_position())
             self.active_elevators.remove(
                 next_elevator
-            )  # TODO check if this makes sende #doubt
+            )  # TODO check if this makes sense #doubt
         else:
             # update the time of the simulation and remember how big the interval was (for the loss function)
             self.world_time = next_arrival
@@ -383,9 +370,4 @@ class ElevatorSimulator:
         # Arrivals handled
 
         # return the data for the observations
-        return self.return_observations(step_size=step_size)
-
-
-if __name__ == "__main__":
-    e = ElevatorSimulator(10, 4)
-    e.init_simulation("../pxsim/data/test_data.csv")
+        return self.get_observations(step_size=step_size)

@@ -29,11 +29,11 @@ class Runner:
             max_speed=max_speed,
             max_acceleration=max_acceleration,
         )
-        self.observations, self.info = self.api.reset(seed=seed)
         self.error = 0
         self.done = False
         self.truncated = False
         self.needs_decision = True
+        self.update_from_observations(self.api.reset(seed=seed))
 
     def run(self, visualize=False, step_size=0.1):
         # if visualize is True then step size cannot be none
@@ -65,25 +65,19 @@ class Runner:
             else:
                 action = None
             # If visualize is true then we need to also pass step max_step_size
-            if visualize:
-                previous_observation = self.observations
-                (
-                    self.observations,
-                    reward,
-                    self.done,
-                    self.truncated,
-                    self.info,
-                ) = self.api.step(action, max_step_size=step_size)
-            else:
-                (
-                    self.observations,
-                    reward,
-                    self.done,
-                    self.truncated,
-                    self.info,
-                ) = self.api.step(action)
-
-            self.needs_decision = self.info["needs_decision"]
-            self.error += reward
+            previous_observation = self.observations
+            self.update_from_observations(
+                self.api.step(action, max_step_size=(step_size if visualize else None))
+            )
 
         return self.error
+
+    def update_from_observations(self, observations):
+        (
+            self.observations,
+            reward,
+            self.done,
+            self.truncated,
+            self.needs_decision,
+        ) = observations
+        self.error += reward

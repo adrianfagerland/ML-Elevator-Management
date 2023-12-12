@@ -77,7 +77,7 @@ class NearestCar(Scheduler):
             for elev in sorted(
                 elevators, key=lambda x: fs_values[x.number], reverse=True
             ):
-                if elev.call_is_on_route(call):
+                if elev.call_is_on_route(call, target):
                     if (
                         elev in busy_elevators
                         and busy_elevators[elev][1] < fs_values[elev.number]
@@ -155,7 +155,7 @@ class Elevator:
         self.number = elevator_number
         self.direction = self.update_direction()
         self.buttons_inside = buttons_inside
-        self.floors_to_serve = self.buttons_inside
+        self.floors_next_move = self.buttons_inside
         self.position: float = current_postion
         self.max_acceleration = max_acceleration
         self.door: float = door

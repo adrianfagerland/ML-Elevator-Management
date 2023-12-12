@@ -98,20 +98,21 @@ class ElevatorEnvironment(gym.Env):
 
 
         # Define action space
-        self.action_space = spaces.MultiDiscrete(
-            [self.episode_num_floors, 3] * self.episode_num_elevators,
-            seed=self._get_rnd_int(),
-        )
         # Action space cannot be of type dict? for stable baseline3 learning algorithm different shape but contains the same information
 
-        self.action_space = spaces.Dict(spaces={
-            "target": spaces.MultiDiscrete([self.episode_num_floors] * self.episode_num_elevators, seed=self._get_rnd_int()),
-            "to_serve": spaces.MultiDiscrete([3] * self.episode_num_elevators)
-        })
+        self.action_space = spaces.Dict(
+            spaces={
+                "target": spaces.MultiDiscrete(
+                    [self.episode_num_floors] * self.episode_num_elevators,
+                    seed=self._get_rnd_int(),
+                ),
+                "next_move": spaces.MultiDiscrete([3] * self.episode_num_elevators),
+            }
+        )
 
-        # return initial observation and info
-        observations, _, _, _, info = self.simulator.reset_simulation()
-        return (observations, info)
+
+        return self.simulator.reset_simulation()
+
 
     def _get_rnd_int(self):
         return int(self.r.integers(0, int(1e6)))
@@ -120,7 +121,7 @@ class ElevatorEnvironment(gym.Env):
         """Function that is called by rollout of the enviroment
 
         Args:
-            tensordict ([tensordict]): [the tensordict that contains the action that should be executed]
+            action ([tensordict]): [the tensordict that contains the action that should be executed]
             max_step_size: ([float|None]): [If the step size is not none, we limit the max step size of then enviroment
                                         in the info part the algorithm then returns whether an actual decision needs to be done.
                                         If set and no decision is given allows to just continue the simulation with no changes]
@@ -133,19 +134,15 @@ class ElevatorEnvironment(gym.Env):
         # modify action list to dictionary if not correctly passed as parameter
         # needs to be handled as the policy can only output a list of values while dict is the default for all
         # conventional algorihtms, might not be the best place for this conversion (:shrug)
-        elif (not isinstance(action, dict)):
-            action_dict = {
-                "target": action[::2],
-                "to_serve": action[1::2] - 1
-            }
+        elif not isinstance(action, dict):
+            action_dict = {"target": action[::2], "next_move": action[1::2]}
         else:
-
             action_dict = {}
-            to_serve_copy = np.copy(action['to_serve']) - 1
-            target_copy = np.copy(action['target'])
-            action_dict["to_serve"] = to_serve_copy
-            action_dict['target'] = target_copy
-        # shift the to_serve value to be in range [-1,1] instead of [0,2]
+            next_move_copy = np.copy(action["next_move"])
+            target_copy = np.copy(action["target"])
+            action_dict["next_move"] = next_move_copy
+            action_dict["target"] = target_copy
+        # shift the next_move value to be in range [-1,1] instead of [0,2]
 
         return self.simulator.step(action_dict, max_step_size=max_step_size)
 
@@ -157,7 +154,6 @@ class ElevatorEnvironment(gym.Env):
 
 
 # Register the enviroment
-
 
 # gymnasium.envs.registration.load_plugin_envs
 gym.register(id="Elevator-v0", entry_point="ml.api:ElevatorEnvironment")
