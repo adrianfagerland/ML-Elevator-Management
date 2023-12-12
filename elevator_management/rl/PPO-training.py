@@ -1,17 +1,13 @@
 # PPO-LSTM
+from typing import Type
+
 import gymnasium as gym
+import ml.api  # needs to be imported for the env registration
 import torch as th
 import torch.nn.functional as F
 import torch.optim as optim
-
-
-from rl.network import alphaLSTMNetwork, ElevatorNetwork, PRE_HIDDEN_SIZE, OUT_HIDDEN_SIZE
-
-from typing import Type
-
 from gymnasium.utils.env_checker import check_env
-
-import ml.api  # needs to be imported for the env registration
+from rl.network import ElevatorNetwork, alphaLSTMNetwork
 
 # Hyperparameters
 learning_rate = 0.0005
@@ -36,12 +32,14 @@ class PPO:
         # store the enviromnent to train the network on
         self.env = env
 
-        self.num_floors = env.get_wrapper_attr('num_floors')
+        self.num_floors = env.get_wrapper_attr("num_floors")
 
         # initiliaze the network on which to train
-        self.model = network_architecture(observation_space=self.env.observation_space,
-                                          action_space=self.env.action_space,
-                                          num_floors=self.num_floors)
+        self.model = network_architecture(
+            observation_space=self.env.observation_space,
+            action_space=self.env.action_space,
+            num_floors=self.num_floors,
+        )
 
         self.data = []
 
@@ -76,7 +74,16 @@ class PPO:
         self.data.append(transition)
 
     def make_batch(self):
-        fs_lst, a_lst, r_lst, fs_prime_lst, prob_a_lst, h_in_lst, h_out_lst, done_lst = [], [], [], [], [], [], [], []
+        (
+            fs_lst,
+            a_lst,
+            r_lst,
+            fs_prime_lst,
+            prob_a_lst,
+            h_in_lst,
+            h_out_lst,
+            done_lst,
+        ) = ([], [], [], [], [], [], [], [])
         for transition in self.data:
             fs, a, r, fs_prime, prob_a, h_in, h_out, done = transition
 
@@ -109,7 +116,9 @@ class PPO:
         hidden_states_0 = []
         for ele_hidden_in_0 in h_in_0:
             (pre_h, pre_c), (comm_h, comm_c) = ele_hidden_in_0
-            hidden_states_0.append(((pre_h.detach(), pre_c.detach()), (comm_h.detach(), comm_c.detach())))
+            hidden_states_0.append(
+                ((pre_h.detach(), pre_c.detach()), (comm_h.detach(), comm_c.detach()))
+            )
         # detach? first hidden state
         hidden_states_1 = []
         for ele_hidden_in_0 in h_out_0:
@@ -139,7 +148,7 @@ class PPO:
             ratio = th.exp(log_prob_a_prime - log_prob_a)  # a/b == log(exp(a)-exp(b))
 
             surr1 = ratio * advantage
-            surr2 = th.clamp(ratio, 1-eps_clip, 1+eps_clip) * advantage
+            surr2 = th.clamp(ratio, 1 - eps_clip, 1 + eps_clip) * advantage
             loss = -th.min(surr1, surr2) + F.smooth_l1_loss(v_s, td_target.detach())
 
             self.opt.zero_grad()
@@ -147,16 +156,16 @@ class PPO:
             self.opt.step()
 
     def train(self, episode_length=1000):
-
         score = 0.0
         print_interval = 20
 
         for n_epi in range(episode_length):
-
             s, _ = env.reset()  # this determines how many elevators for this episode
             done = False
-            num_elevators = s['num_elevators'][0]
-            hidden_inf_out = [self.model._generate_empty_hidden_state() for _ in range(num_elevators)]
+            num_elevators = s["num_elevators"][0]
+            hidden_inf_out = [
+                self.model._generate_empty_hidden_state() for _ in range(num_elevators)
+            ]
             while not done:
                 for t in range(T_horizon):
                     hidden_inf_in = hidden_inf_out
@@ -171,7 +180,18 @@ class PPO:
                     r = float(r)
                     # get probability of action a
 
-                    self.put_data((fs, a, r/100.0, fs_prime, log_prob_a, hidden_inf_in, hidden_inf_out, done))
+                    self.put_data(
+                        (
+                            fs,
+                            a,
+                            r / 100.0,
+                            fs_prime,
+                            log_prob_a,
+                            hidden_inf_in,
+                            hidden_inf_out,
+                            done,
+                        )
+                    )
                     s = s_prime
 
                     score += r
@@ -181,15 +201,18 @@ class PPO:
                 trainer.update_parameters()
 
             if n_epi % print_interval == 0 and n_epi != 0:
-                print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/print_interval))
+                print(
+                    "# of episode :{}, avg score : {:.1f}".format(
+                        n_epi, score / print_interval
+                    )
+                )
                 score = 0.0
 
         env.close()
 
 
-if __name__ == '__main__':
-
-    env = gym.make('Elevator-v0', num_floors=20, num_elevators=5)
+if __name__ == "__main__":
+    env = gym.make("Elevator-v0", num_floors=20, num_elevators=5)
     check_env(env.unwrapped)
 
     trainer = PPO(alphaLSTMNetwork, env)

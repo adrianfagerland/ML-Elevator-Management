@@ -1,5 +1,3 @@
-import numbers
-import warnings
 from collections import namedtuple
 from typing import List, Tuple
 
@@ -98,6 +96,7 @@ class AlphaStackedLSTM(nn.Module):
     """
     Does yet not work when multiple inputs are given at once.
     """
+
     __constants__ = ["layers"]  # Necessary for iterating through self.layers
 
     def __init__(self, num_layers, layer, first_layer_args, other_layer_args):
@@ -109,7 +108,6 @@ class AlphaStackedLSTM(nn.Module):
     def forward(
         self, input: Tensor, states: List[Tuple[Tensor, Tensor]], alpha: float = 1
     ) -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
-
         output_states_h = jit.annotate(List[Tensor], [])
         output_states_c = jit.annotate(List[Tensor], [])
         output = input

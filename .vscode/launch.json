@@ -13,7 +13,7 @@
             "name": "Python: Simulator",
             "type": "python",
             "request": "launch",
-            "module": "eval.main",
+            "module": "main",
             "justMyCode": true,
             "cwd": "${workspaceFolder}/elevator_management"
         },
