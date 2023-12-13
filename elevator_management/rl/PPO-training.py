@@ -13,7 +13,7 @@ from rl.network import (
     ElevatorNetwork,
     alphaLSTMNetwork,
 )
-
+from vis.console import print_elevator
 
 # Hyperparameters
 learning_rate = 0.0005
@@ -164,9 +164,11 @@ class PPO:
     def train(self, episode_length=1000):
         score = 0.0
         print_interval = 20
-
+        print("Start training!")
+        print(f"Num steps performed:")
         for n_epi in range(episode_length):
             s, _ = env.reset()  # this determines how many elevators for this episode
+            print_elevator(s)
             done = False
             num_elevators = s["num_elevators"][0]
             hidden_inf_out = [
@@ -178,26 +180,17 @@ class PPO:
                     fs = self.model.extract_features(s)
                     prob, hidden_inf_out = self.model.forward_actor(fs, hidden_inf_in)
 
-                    a, log_prob_a = self.model.generate_action_from_output(prob)
+                    a, log_prob_a = self.model.sample_action_from_output(prob)
 
                     s_prime, r, done, truncated, info = env.step(a)
+                    print(r)
+                    print_elevator(s_prime, 1, previous_action=a, setup=True)
                     fs_prime = self.model.extract_features(s_prime)
                     # convert r to float (otherwise ide doesnt understand)
                     r = float(r)
                     # get probability of action a
 
-                    self.put_data(
-                        (
-                            fs,
-                            a,
-                            r / 100.0,
-                            fs_prime,
-                            log_prob_a,
-                            hidden_inf_in,
-                            hidden_inf_out,
-                            done,
-                        )
-                    )
+                    self.put_data((fs, a,r / 100.0,fs_prime,log_prob_a,hidden_inf_in,hidden_inf_out,done,))
                     s = s_prime
 
                     score += r
@@ -218,8 +211,8 @@ class PPO:
 
 
 if __name__ == "__main__":
-    env = gym.make("Elevator-v0", num_floors=20, num_elevators=5)
-    check_env(env.unwrapped)
+    env = gym.make("Elevator-v0", num_floors=10, num_elevators=3)
+    #check_env(env.unwrapped)
 
     trainer = PPO(alphaLSTMNetwork, env)
 

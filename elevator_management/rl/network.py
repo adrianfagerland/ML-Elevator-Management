@@ -4,19 +4,20 @@ from typing import Any
 import numpy as np
 import torch as th
 from gymnasium import spaces
+from ml.scheduler import Scheduler
 from rl.alpha_lstm import script_alpha_lstm
 from rl.feature_extractor import ElevatorFeatureExtractor
 from torch import nn
 from torch.distributions import Categorical
 
-PRE_HIDDEN_SIZE = 256
-COMM_INPUT_SIZE = 128
-COMM_HIDDEN_SIZE = 128
+PRE_HIDDEN_SIZE = 64
+COMM_INPUT_SIZE = 64
+COMM_HIDDEN_SIZE = 32
 OUT_INPUT_SIZE = COMM_HIDDEN_SIZE
 OUT_HIDDEN_SIZE = 128
 
 
-class ElevatorNetwork(nn.Module):
+class ElevatorNetwork(nn.Module, Scheduler):
     """A base class for an elevator network. Subclasses should implement the
 
     Args:
@@ -48,11 +49,7 @@ class ElevatorNetwork(nn.Module):
 
         self.elevator_input_size = self.group_data_length + self.elevator_data_length
 
-    def forward_actor(self, features: th.Tensor, hidden_state):
-        raise NotImplementedError("Needs to be implemented in subclass")
 
-    def forward_critic(self, features: th.Tensor, hidden_state):
-        raise NotImplementedError("Needs to be implemented in subclass")
 
     def extract_features(self, features: th.Tensor) -> th.Tensor:
         return self.feature_extractor.extract(features)
@@ -74,44 +71,62 @@ class ElevatorNetwork(nn.Module):
             split_features[self.group_data_length :] = feature_tensor
             yield ele_idx, split_features
 
-    def _generate_empty_hidden_state(self):
-        raise NotImplementedError("")
 
-    def generate_action_from_output(self, prob):
+    def sample_action_from_output(self, prob):
         # Sample action from output
-        target_prob, dir_prob = prob
+        target_prob, dir_prob = th.split(prob,dim=1,split_size_or_sections=[prob.shape[1]-3,3])
         distr_target = Categorical(target_prob)
         target = distr_target.sample()
         distr_dir = Categorical(dir_prob)
         direction = distr_dir.sample()
 
-        a = {"target": target, "next_move": direction}
         log_prob_a = (
             distr_target.log_prob(target).sum() + distr_dir.log_prob(direction).sum()
         ).item()
+
+        # before returning: shift to match real world direction
+        direction = direction - 1
+
+        a = {"target": target, "next_move": direction}
+
         return a, log_prob_a
 
     def get_log_prob(self, prob, a):
         # Sample action from output
-        if isinstance(prob, list):
+        if isinstance(a, list):
             prob_list = []
-            for prob_i, a_i in zip(prob, a):
+            for idx, prob_i in enumerate(prob[:]):
+                a_i = a[idx]
                 prob_list.append(self._get_log_prob(prob_i, a_i[0]))
             return th.stack(prob_list)
         else:
-            return self._get_log(prob, a)
+            return self._get_log_prob(prob, a)
 
     def _get_log_prob(self, prob, a):
-        target_prob, dir_prob = prob
+        target_prob, dir_prob = th.split(prob,dim=1,split_size_or_sections=[prob.shape[1]-3,3])
         distr_target = Categorical(target_prob)
         distr_dir = Categorical(dir_prob)
+        # get indiv actions from a and shift next_move output
+        target, next_move = a['target'], a['next_move']
+        next_move += 1
 
         log_prob_a = (
-            distr_target.log_prob(a["target"]).sum()
-            + distr_dir.log_prob(a["next_move"]).sum()
+            distr_target.log_prob(target).sum()
+            + distr_dir.log_prob(next_move).sum()
         )
         return log_prob_a
 
+    def forward_actor(self, features: th.Tensor, hidden_state):
+        raise NotImplementedError("Needs to be implemented in subclass")
+
+    def forward_critic(self, features: th.Tensor, hidden_state):
+        raise NotImplementedError("Needs to be implemented in subclass")
+    
+    def _generate_empty_hidden_state(self):
+        raise NotImplementedError("Needs to be implemented in subclass")
+
+    def decide(self, observations, error):
+        pass
 
 class alphaLSTMNetwork(ElevatorNetwork):
     """
@@ -137,8 +152,6 @@ class alphaLSTMNetwork(ElevatorNetwork):
         self.num_rounds = num_rounds
         self.dropoff = dropoff
 
-        self.output_size = num_floors + 3  # this 3 is for up down and stay on floor
-
         self.setup_preprocess_network()
         self.setup_actor_network()
         self.setup_value_network()
@@ -157,7 +170,7 @@ class alphaLSTMNetwork(ElevatorNetwork):
         )
         out_actor_fc_tar = nn.Linear(OUT_HIDDEN_SIZE, self.num_floors)
         out_actor_fc_dir = nn.Linear(OUT_HIDDEN_SIZE, 3)
-        out_actor_act = nn.Softmax()
+        out_actor_act = nn.Softmax(dim=1)
 
         out_actor_target = nn.Sequential(
             out_actor_fc_tar,
@@ -170,19 +183,16 @@ class alphaLSTMNetwork(ElevatorNetwork):
         # create dictionary
         self.actor_layers = nn.ModuleDict(
             {
-                "comm": nn.ModuleDict({"lstm": comm_actor_lstm}),
-                "out": nn.ModuleDict(
-                    {
-                        "lstm": out_actor_lstm,
-                        "dir": out_actor_dir,
-                        "tar": out_actor_target,
-                    }
-                ),
+                "communication_lstm": comm_actor_lstm,
+                "postprocessing_lstm": out_actor_lstm,
+                "postprocessing_direction": out_actor_dir,
+                "postprocessing_target": out_actor_target,
             }
         )
 
     def setup_value_network(self):
-        # 2 layer LSTM for communication part
+        
+        # define all the layers needed for the critic
         comm_num_layers = 2
         comm_value_lstm = script_alpha_lstm(
             COMM_INPUT_SIZE, COMM_HIDDEN_SIZE, comm_num_layers
@@ -201,10 +211,9 @@ class alphaLSTMNetwork(ElevatorNetwork):
         # create dictionary
         self.critic_layers = nn.ModuleDict(
             {
-                "comm": nn.ModuleDict({"lstm": comm_value_lstm}),
-                "out": nn.ModuleDict(
-                    {"linear1": out_value_linear1, "linear2": out_value_linear2}
-                ),
+                "communication_lstm": comm_value_lstm,
+                "postprocessing_linear1": out_value_linear1, 
+                "postprocessing_linear2": out_value_linear2
             }
         )
 
@@ -243,7 +252,7 @@ class alphaLSTMNetwork(ElevatorNetwork):
         for _ in range(self.num_rounds):
             for idx in range(num_elevators):
                 # TODO: TWO VERSIONS: USE OR NOT USE OUTPUT
-                final_output, comm_hidden = func_set["comm"]["lstm"](
+                final_output, comm_hidden = func_set["communication_lstm"](
                     preprocessed_input[idx][None, :], comm_hidden, alpha
                 )
             alpha *= self.dropoff
@@ -254,8 +263,10 @@ class alphaLSTMNetwork(ElevatorNetwork):
         return group_dec_inf
 
     def _forward_single_batch_actor(
-        self, features: th.Tensor, hidden_state: list[tuple], func_set
-    ) -> tuple[tuple[th.Tensor, th.Tensor], list[tuple]]:
+        self, features: th.Tensor, hidden_state: list[tuple]
+    ) -> tuple[th.Tensor, list[tuple]]:
+        
+
         # to store the new hidden states
         new_pre_hidden_states = []
         new_out_hidden_states = []
@@ -266,7 +277,7 @@ class alphaLSTMNetwork(ElevatorNetwork):
         finalized_output_dir = []
 
         group_dec_inf = self._pre_comm_exec(
-            split_features, hidden_state, func_set, new_pre_hidden_states
+            split_features, hidden_state, self.actor_layers, new_pre_hidden_states
         )
 
         #####################################
@@ -276,12 +287,12 @@ class alphaLSTMNetwork(ElevatorNetwork):
             _, out_hidden = hidden_state[index]
 
             out_input = th.concatenate([group_dec_inf, split_feature])
-            out_input, new_out_hidden = func_set["out"]["lstm"](
+            out_input, new_out_hidden = self.actor_layers["postprocessing_lstm"](
                 out_input[None, :], out_hidden
             )
 
-            out_input_tar = func_set["out"]["tar"](out_input).squeeze()
-            out_input_dir = func_set["out"]["dir"](out_input).squeeze()
+            out_input_tar = self.actor_layers["postprocessing_target"](out_input).squeeze()
+            out_input_dir = self.actor_layers["postprocessing_direction"](out_input).squeeze()
 
             finalized_output_tar.append(out_input_tar)
             finalized_output_dir.append(out_input_dir)
@@ -292,22 +303,21 @@ class alphaLSTMNetwork(ElevatorNetwork):
             th.stack(finalized_output_dir, dim=0),
         )
 
-        return final_output, list(zip(new_pre_hidden_states, new_out_hidden_states))
+        return th.concatenate(final_output, dim=1), list(zip(new_pre_hidden_states, new_out_hidden_states))
 
     def _forward_single_batch_critic(
-        self, features: th.Tensor, hidden_state: list[tuple], func_set
+        self, features: th.Tensor, hidden_state: list[tuple]
     ) -> tuple[th.Tensor, list[tuple]]:
+
         # to store the new hidden states
         new_pre_hidden_states = []
         # new_out_hidden_states = []
         # split up the features
         split_features = list(self.split_features(features))
 
-        finalized_output_tar = []
-        finalized_output_dir = []
 
         group_dec_inf = self._pre_comm_exec(
-            split_features, hidden_state, func_set, new_pre_hidden_states
+            split_features, hidden_state, self.critic_layers, new_pre_hidden_states
         )
 
         #####################################
@@ -316,8 +326,8 @@ class alphaLSTMNetwork(ElevatorNetwork):
         final_output = []
         for index, split_feature in split_features:
             out_input = th.concatenate([group_dec_inf, split_feature])
-            out_input = func_set["out"]["linear1"](out_input)
-            out_input = func_set["out"]["linear2"](out_input)
+            out_input = self.critic_layers["postprocessing_linear1"](out_input)
+            out_input = self.critic_layers["postprocessing_linear2"](out_input)
 
             final_output.append(out_input)
 
@@ -341,48 +351,33 @@ class alphaLSTMNetwork(ElevatorNetwork):
 
         return hidden_inf_one_elevator
 
-    def forward_critic(
-        self, features: th.Tensor, hidden_state: list[tuple]
-    ) -> tuple[th.Tensor, list[tuple]]:
+    def _forward(
+        self, features: th.Tensor, hidden_state: list[tuple], func_single_batch
+    ):
         if features.dim() == 1:  # run just one example
-            return self._forward_single_batch_critic(
-                features, hidden_state, self.critic_layers
-            )
+            return func_single_batch(features, hidden_state)
         elif features.dim() == 2:
             # run batch each after another
             out = []
             for single_value in features[:]:
-                run_value, hidden_state = self._forward_single_batch_critic(
-                    single_value, hidden_state, self.critic_layers
-                )
+                run_value, hidden_state = func_single_batch(single_value, hidden_state)
                 out.append(run_value)
             return th.stack(out), hidden_state
         else:
             raise Exception()
 
+
     def forward_actor(
         self, features: th.Tensor, hidden_state: list[tuple]
-    ) -> tuple[tuple[th.Tensor, th.Tensor] | list[tuple], list[tuple]]:
-        if features.dim() == 1:  # run just one example
-            return self._forward_single_batch_actor(
-                features, hidden_state, self.actor_layers
-            )
-        elif features.dim() == 2:
-            # run batch each after another
-            out = []
-            for single_value in features[:]:
-                run_value, hidden_state = self._forward_single_batch_actor(
-                    single_value, hidden_state, self.actor_layers
-                )
-                out.append(run_value)
-            return out, hidden_state
-        else:
-            raise Exception()
+    ):
+        return self._forward(features, hidden_state, self._forward_single_batch_actor)
 
-
-class Drop_Arg(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x: th.Tensor, y) -> th.Tensor:
-        return x
+    def forward_critic(
+        self, features: th.Tensor, hidden_state: list[tuple]
+    ):
+        return self._forward(features, hidden_state, self._forward_single_batch_critic)
+"""
+    def forward(self, features, hidden_states):
+        hidden_actor, hidden_critic = hidden_states
+        return self.forward_actor(features, hidden_actor), self.forward_critic(features, hidden_critic)
+"""

@@ -134,11 +134,11 @@ class NearestCar(Scheduler):
 
     def update_elevators(self, observations):
         for i, elevator in enumerate(self.elevators):
-            elevator.position = observations["position"][i]
-            elevator.speed = observations["speed"][i]
+            elevator.position = observations['elevators'][i]["position"][0]
+            elevator.speed = observations['elevators'][i]["speed"][0]
             elevator.update_direction()
-            elevator.buttons_inside = observations["buttons"][i]
-            elevator.door = observations["doors_state"][i]
+            elevator.buttons_inside = observations['elevators'][i]["buttons"]
+            elevator.door = observations['elevators'][i]["doors_state"][0]
 
 
 class Elevator:
