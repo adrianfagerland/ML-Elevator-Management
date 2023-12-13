@@ -21,6 +21,7 @@ class ElevatorSimulator:
         acceleration_elevator: float = 0.4,
         max_elevator_occupancy: int = 7,
         random_seed: float = 0,
+        num_arrivals: int = 2000,
         random_elevator_init: bool = True,
     ):
         """Initialises the Elevator Simulation.
@@ -43,6 +44,7 @@ class ElevatorSimulator:
         self.max_elevator_occupancy = max_elevator_occupancy
         self.random_init = random_elevator_init
         self.done = False
+        self.num_arrivals = num_arrivals
         self.active_elevators = set()
 
         self.r = Random(random_seed)
@@ -108,7 +110,7 @@ class ElevatorSimulator:
         Args:
             path (str): path to the csv file
         """
-        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, 150))
+        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals))
         # Check that all specified floors are valid in this building
         assert (
             min([arrivals[2] for arrivals in all_arrivals]) >= 0
@@ -125,7 +127,7 @@ class ElevatorSimulator:
             for arrival in all_arrivals
         ]
 
-    def init_simulation(self, path: str):
+    def init_simulation(self):
         """Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
 
         Args:
@@ -254,47 +256,67 @@ class ElevatorSimulator:
         return ind_loss
 
     def _handle_arrivals_departures(self, next_elevator: Elevator):
-        if next_elevator.get_doors_open() != 1:
-            return
+        
+        assert next_elevator.is_at_target()
+        next_elevator.handle_arrive()
+
         arrived_floor = int(next_elevator.get_position())
-        if (
-            next_elevator.get_target_position() == next_elevator.get_position()
-            and next_elevator.next_movement == 0
-        ):
-            next_elevator.vibe_check(arrived_floor=arrived_floor)
-        elif next_elevator.next_movement != 0:
-            next_elevator.vibe_check(arrived_floor=arrived_floor)
+        target_queue_floor = None
+        # if elevator has no next_movement set allow either queue to be 
+        if(next_elevator.next_movement == 0):
+            # do people want to join, which want to go up?
+            if(len(self.floor_queue_list_up[arrived_floor]) > 0):
+                target_queue_floor = self.floor_queue_list_up[arrived_floor]
+            # do people want to join, which want to go down?
+            elif(len(self.floor_queue_list_down[arrived_floor]) > 0):
+                target_queue_floor = self.floor_queue_list_down[arrived_floor]
+        else:
+            # next_movement was set, only allow people to join that go in the direction of the elevator
             if next_elevator.next_movement == 1:
-                target_queue = self.floor_queue_list_up
+                target_queue_floor = self.floor_queue_list_up[arrived_floor]
             elif next_elevator.next_movement == -1:
-                target_queue = self.floor_queue_list_down
-            else:
-                raise Exception("Something went wrong")
-            num_possible_join = next_elevator.get_num_possible_join()
-            for i in range(min(len(target_queue[arrived_floor]), num_possible_join)):
-                next_elevator.add_rider(
-                    (
-                        target_queue[arrived_floor][i][0],
-                        self.world_time,
-                        target_queue[arrived_floor][i][1],
-                    )
+                target_queue_floor = self.floor_queue_list_down[arrived_floor]
+
+
+        assert target_queue_floor is not None
+
+        # get possible number of joining people
+        num_possible_join = next_elevator.get_num_possible_join()
+        # and add each one to the elevator
+        for i in range(min(len(target_queue_floor), num_possible_join)):
+            next_elevator.add_rider(
+                (
+                    target_queue_floor[i][0],
+                    self.world_time,
+                    target_queue_floor[i][1],
                 )
-            del target_queue[arrived_floor][
-                : min(len(target_queue[arrived_floor]), num_possible_join)
-            ]
+            )
+        
+        # remove the people that went onto the elevator
+        target_queue_floor =  target_queue_floor[min(len(target_queue_floor[arrived_floor]), num_possible_join):]
 
-            if len(target_queue[arrived_floor]) > num_possible_join:
-                # not all people could join, press elevator button again after few seconds
-                button_press_again_time = DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 1
-                new_arrival_time = self.world_time + button_press_again_time
+        # test if all people could join
+        if len(target_queue_floor) > 0:
+            # not all people could join, press elevator button again after few seconds
+            button_press_again_time = DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3
+            new_arrival_time = self.world_time + button_press_again_time
 
-                # find spot to insert new arrival
-                i = self.next_arrival_index
-                while i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time:
-                    i += 1
-                for start_time, end_floor in target_queue[arrived_floor]:
-                    self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
+            # find spot to insert new arrival
+            i = self.next_arrival_index
+            while i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time:
+                i += 1
+            for start_time, end_floor in target_queue_floor[arrived_floor]:
+                self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
+    def get_number_of_people_in_sim(self):
+        """
+        Finds all the people that are currently in the simulation. Both waiting on a floor or riding in an elevator.
+        """
+        waiting_up = sum([len(queue_list) for queue_list in self.floor_queue_list_up])
+        waiting_down = sum([len(queue_list) for queue_list in self.floor_queue_list_down])
+
+        riding_elevator = sum([len(elevator.get_riders()) for elevator in self.elevators])
+        return waiting_up + waiting_down + riding_elevator
                     
     def step(self, actions, max_step_size=None) -> tuple:
 
@@ -322,13 +344,11 @@ class ElevatorSimulator:
                 self.next_arrival_index
             ]
 
-        # Check if no person left to transport and if no elevator still on its way to a target floor then exit simulation
-        # if (min(next_arrival, next_elevator_time) >= np.infty):
-        if next_arrival >= np.infty:
-            # break
-            # TODO: discuss how to handle run out of data in the context of learning
+        # Check if no person left to arrive
+        # TODO: handle the waiting / riding people (stop until no person in the simulation)
+        if next_arrival >= np.infty: 
             self.done = True
-            # raise NotImplementedError
+            
 
         # Get next elevator arrival
         next_elevator: Elevator | None = None
@@ -347,7 +367,7 @@ class ElevatorSimulator:
 
             for elevator in self.elevators:
                 elevator.advance_simulation(max_step_size)
-                self._handle_arrivals_departures(elevator)
+
             self.world_time += max_step_size
             return self.get_observations(needs_decision=False)
 
@@ -372,14 +392,6 @@ class ElevatorSimulator:
                 )
             self.next_arrival_index += 1
         
-        # had to disable this as this was causing problems, and i (simon) dont see why this was neccessary 
-        # in the first place. only commented it out as someone might have had a reason
-        """elif next_elevator.next_movement == 0:
-            next_elevator.vibe_check(arrived_floor=next_elevator.get_position())
-            self.active_elevators.remove(
-                next_elevator
-            )  # TODO check if this makes sense #doubt
-        """ 
         if(next_arrival > self.world_time + next_elevator_time):
             # update the time of the simulation and remember how big the interval was (for the loss function)
             self.world_time += next_elevator_time
@@ -390,6 +402,7 @@ class ElevatorSimulator:
             
             assert next_elevator is not None
             self._handle_arrivals_departures(next_elevator)
+
         # Arrivals handled
 
         # return the data for the observations

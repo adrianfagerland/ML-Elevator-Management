@@ -13,6 +13,7 @@ class ElevatorEnvironment(gym.Env):
         self,
         num_elevators: tuple[int, int] | int,
         num_floors: int,
+        num_arrivals=2000,
         render_mode=None,
         max_speed=2,
         max_acceleration=0.4,
@@ -33,6 +34,7 @@ class ElevatorEnvironment(gym.Env):
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
         self.max_occupancy = max_occupancy
+        self.num_arrivals = num_arrivals
 
         # To have valid action/observation spaces
         self.reset()
@@ -55,10 +57,11 @@ class ElevatorEnvironment(gym.Env):
             speed_elevator=self.max_speed,
             acceleration_elevator=self.max_acceleration,
             max_elevator_occupancy=self.max_occupancy,
+            num_arrivals=self.num_arrivals
         )
 
         # generate the arrival data or read in trough path, TODO: needs to be changed
-        self.simulator.init_simulation("data/w1_f9_1.0.1.csv")
+        self.simulator.init_simulation()
         # Define observation space
         self.observation_space = spaces.Dict({
             "floors": spaces.MultiBinary(

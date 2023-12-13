@@ -111,18 +111,26 @@ class Elevator:
         self.riders.append(rider)
         self.buttons[rider[2]] = 1
 
-    def vibe_check(self, arrived_floor):
+    def is_at_target(self) -> bool:
         """
-        Checks if the elevator is vibing.
-        If any of the riders is not vibing, the elevator is not vibing.
-        If all riders are vibing, the elevator is vibing.
-        Kicks out the ones that want to leave at this floor.
+        Returns true if elevator is at target and people can leave the elevator.
         """
-        num_old_riders = len(self.riders)
+        return self.target_position == self.get_position() and self.get_speed() == 0 and self.get_doors_open() == 1
+
+    def handle_arrive(self):
+        """
+        Handle the arrival of an elevator on a floor. Should only be called on an elevator that is at its target and has arrived.
+        """
+        # Test if elevator is at floor
+        if not self.is_at_target():
+            pass
+        arrived_floor = int(self.get_position())
+
+        # If people want to leave on that floor, remove them from riding list.
         self.riders = [rider for rider in self.riders if rider[2] != arrived_floor]
-        if num_old_riders != len(self.riders):
-            assert self.get_doors_open() == 1
-            self.buttons[arrived_floor] = 0
+        
+        # Served the floor, set button to not pressed
+        self.buttons[arrived_floor] = 0
 
     def get_num_possible_join(self):
         return self.max_occupancy - self.get_num_passangers()

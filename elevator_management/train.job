@@ -1,0 +1,14 @@
+#!/usr/bin/zsh
+#SBATCH --mem-per-cpu=2048M
+#SBATCH --job-name=elevator_ppo
+
+#SBATCH --output=/work/wx350715/elevator_output/elevator.out
+#SBATCH --error=/work/wx350715/elevator_output/elevator.err
+
+
+#SBATCH --time=7:00:00
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+module load Python/3.10.4
+
+python /home/wx350715/projects/ML-Elevator-Management/elevator_management/test.py
