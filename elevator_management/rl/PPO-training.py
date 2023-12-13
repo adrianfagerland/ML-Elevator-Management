@@ -165,6 +165,7 @@ class PPO:
         score = 0.0
         print_interval = 20
         print("Start training!")
+        print(f"Num steps performed:")
         for n_epi in range(episode_length):
             s, _ = env.reset()  # this determines how many elevators for this episode
             print_elevator(s)
@@ -189,18 +190,7 @@ class PPO:
                     r = float(r)
                     # get probability of action a
 
-                    self.put_data(
-                        (
-                            fs,
-                            a,
-                            r / 100.0,
-                            fs_prime,
-                            log_prob_a,
-                            hidden_inf_in,
-                            hidden_inf_out,
-                            done,
-                        )
-                    )
+                    self.put_data((fs, a,r / 100.0,fs_prime,log_prob_a,hidden_inf_in,hidden_inf_out,done,))
                     s = s_prime
 
                     score += r
@@ -221,7 +211,7 @@ class PPO:
 
 
 if __name__ == "__main__":
-    env = gym.make("Elevator-v0", num_floors=20, num_elevators=1)
+    env = gym.make("Elevator-v0", num_floors=10, num_elevators=3)
     #check_env(env.unwrapped)
 
     trainer = PPO(alphaLSTMNetwork, env)

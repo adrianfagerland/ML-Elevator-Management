@@ -69,17 +69,18 @@ class ElevatorEnvironment(gym.Env):
                 shape=(1,), 
                 dtype=np.uint8, 
                 seed=self._get_rnd_int()),
-
+            # TODO change observation space dict to just one value (just seconds with unbounded size)
+            # or maybe both(?)
             "time": spaces.Dict({
-                    "time_since_last_seconds": spaces.Box(
+                    "time_seconds": spaces.Box(
                         low=0, 
-                        high=60, 
+                        high=np.infty, 
                         shape=(1,), 
                         dtype=np.float32, 
                         seed=self._get_rnd_int()),
-                    "time_since_last_minutes": spaces.Box(
+                    "time_since_last_seconds": spaces.Box(
                         low=0, 
-                        high=60, 
+                        high=np.infty, 
                         shape=(1,), 
                         dtype=np.float32, 
                         seed=self._get_rnd_int()),

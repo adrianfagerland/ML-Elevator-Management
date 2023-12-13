@@ -19,7 +19,9 @@ def print_elevator(observations, skipped_time=1, previous_action=None, setup=Fal
     i = len(buttons_out)
     print_str = ""
 
-    print_str += f"Time {int(time_obs['time_since_last_minutes'][0])}:{int(time_obs['time_since_last_seconds'][0])}\n"
+    time_sec = int(time_obs['time_seconds'][0] % 60)
+    time_min =  int(time_obs['time_seconds'][0] // 60)
+    print_str += f"Time {time_min:02}:{time_sec:02}\n"
 
     for _ in range(len(buttons_out)):
         i = i - 1
@@ -76,7 +78,7 @@ def print_elevator(observations, skipped_time=1, previous_action=None, setup=Fal
         print_str += "Target:" + str(targets[e_it]) + "\n"
 
     if not setup:
-        num_lines = len(buttons_out) + len(buttons_in)
+        num_lines = len(print_str.split("\n")) - 1
         line_length = max([len(line) for line in print_str.splitlines()])
         for _ in range(num_lines):
             delete_last_line(line_length)

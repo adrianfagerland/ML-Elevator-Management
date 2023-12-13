@@ -264,7 +264,7 @@ class alphaLSTMNetwork(ElevatorNetwork):
 
     def _forward_single_batch_actor(
         self, features: th.Tensor, hidden_state: list[tuple]
-    ) -> tuple[tuple[th.Tensor, th.Tensor], list[tuple]]:
+    ) -> tuple[th.Tensor, list[tuple]]:
         
 
         # to store the new hidden states

@@ -5,6 +5,7 @@ from random import Random
 import numpy as np
 from elsim.elevator import Elevator
 from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, LOSS_FACTOR
+from pxsim.generate import generate_arrivals
 
 
 class ElevatorSimulator:
@@ -101,20 +102,13 @@ class ElevatorSimulator:
             0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_down
         ]
 
-    def read_in_people_data(self, path: str):
-        """Reads the csv file of the arrivals. Stores the arrivals in self.arrivals.
+    def generate_arrivals_data(self):
+        """ Generates arrival data for people. Stores the arrivals in self.arrivals.
 
         Args:
             path (str): path to the csv file
         """
-        with open(path, "r") as csvfile:
-            reader = csv.reader(csvfile)
-            next(reader)  # Skip the header row
-            all_arrivals = [
-                [datetime.fromisoformat(row[0]), int(row[1]), int(row[2])]
-                for row in reader
-            ]
-
+        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, 150))
         # Check that all specified floors are valid in this building
         assert (
             min([arrivals[2] for arrivals in all_arrivals]) >= 0
@@ -137,7 +131,7 @@ class ElevatorSimulator:
         Args:
             path (str): path to the csv file containing the arrival data with the specified format.
         """
-        self.read_in_people_data(path)
+        self.generate_arrivals_data()
 
         # start clock for simulation
         self.world_time = 0
@@ -147,7 +141,7 @@ class ElevatorSimulator:
         
         time_since_last = self.world_time - self.last_observation_call
         self.last_observation_call = self.world_time
-        print(f"time since last {time_since_last}")
+
 
         elevator_data = []
         for elevator in self.elevators:
@@ -176,8 +170,8 @@ class ElevatorSimulator:
         # then env to an algorithm for logging
         info_dictionary = {'needs_decision':needs_decision}
 
-        time_dictionary = {"time_since_last_seconds": np.array([time_since_last % 60], dtype=np.float32),
-                            "time_since_last_minutes":np.array([time_since_last // 60], dtype=np.float32)}
+        time_dictionary = {"time_seconds": np.array([ self.world_time], dtype=np.float32),
+                            "time_since_last_seconds":np.array([time_since_last], dtype=np.float32)}
 
         # create dictionary with corrects types expected from gymnasium
         observations = {
@@ -206,10 +200,6 @@ class ElevatorSimulator:
         Returns:
             float: [the complete loss scaled down for a reasonable size]
         """
-
-
-
-
         total_loss = 0
 
         # loop over all person and add their ind_loss to total loss
@@ -359,7 +349,7 @@ class ElevatorSimulator:
                 elevator.advance_simulation(max_step_size)
                 self._handle_arrivals_departures(elevator)
             self.world_time += max_step_size
-            return self.get_observations(step_size=max_step_size, needs_decision=False)
+            return self.get_observations(needs_decision=False)
 
         step_size = next_arrival - self.world_time
         if next_arrival < self.world_time + next_elevator_time:
