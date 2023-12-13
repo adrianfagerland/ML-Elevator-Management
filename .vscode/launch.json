@@ -2,19 +2,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
-            "type": "python",
-            "request": "launch",
-            "program": "${file}",
-            "justMyCode": false,
-            "console": "integratedTerminal"
-        },
-        {
             "name": "Python: Simulator",
             "type": "python",
             "request": "launch",
             "module": "main",
             "justMyCode": true,
+            "cwd": "${workspaceFolder}/elevator_management"
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "justMyCode": false,
+            "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/elevator_management"
         },
         {
@@ -33,12 +34,5 @@
             "justMyCode": false,
             "cwd": "${workspaceFolder}/elevator_management"
         },
-        {
-            "name": "Python: File",
-            "type": "python",
-            "request": "launch",
-            "program": "${file}",
-            "justMyCode": true
-        }
     ]
 }

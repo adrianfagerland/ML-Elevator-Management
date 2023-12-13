@@ -43,7 +43,6 @@ class ElevatorSimulator:
         self.max_elevator_occupancy = max_elevator_occupancy
         self.random_init = random_elevator_init
         self.done = False
-        self.active_elevators = set()
 
         self.r = Random(random_seed)
 
@@ -93,7 +92,6 @@ class ElevatorSimulator:
         self.decay_rate = 0.02  # 1minute ^= 30%
         self.last_observation_call = 0
 
-
     def get_floor_buttons_pressed_up(self):
         return [0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_up]
 
@@ -103,12 +101,14 @@ class ElevatorSimulator:
         ]
 
     def generate_arrivals_data(self):
-        """ Generates arrival data for people. Stores the arrivals in self.arrivals.
+        """Generates arrival data for people. Stores the arrivals in self.arrivals.
 
         Args:
             path (str): path to the csv file
         """
-        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, 150))
+        all_arrivals = list(
+            generate_arrivals(self.num_floors, self.num_elevators, 1, 150)
+        )
         # Check that all specified floors are valid in this building
         assert (
             min([arrivals[2] for arrivals in all_arrivals]) >= 0
@@ -138,21 +138,25 @@ class ElevatorSimulator:
         self.next_arrival_index = 0
 
     def get_observations(self, needs_decision=True) -> tuple:
-        
         time_since_last = self.world_time - self.last_observation_call
         self.last_observation_call = self.world_time
 
-
         elevator_data = []
         for elevator in self.elevators:
-            elevator_data.append({
-                "position":np.array([elevator.get_position()], dtype=np.float32),
-                "speed": np.array([elevator.get_speed()], dtype=np.float32),
-                "target": np.array(elevator.get_target_position()),
-                "buttons": np.array(elevator.get_buttons()), 
-                "doors_state": np.array([elevator.get_doors_open()], dtype=np.float32),
-                "doors_moving_direction": np.array([elevator.get_doors_moving_direction()], dtype=np.float32),
-            })
+            elevator_data.append(
+                {
+                    "position": np.array([elevator.get_position()], dtype=np.float32),
+                    "speed": np.array([elevator.get_speed()], dtype=np.float32),
+                    "target": np.array(elevator.get_target_position()),
+                    "buttons": np.array(elevator.get_buttons()),
+                    "doors_state": np.array(
+                        [elevator.get_doors_open()], dtype=np.float32
+                    ),
+                    "doors_moving_direction": np.array(
+                        [elevator.get_doors_moving_direction()], dtype=np.float32
+                    ),
+                }
+            )
 
         floor_buttons = np.array(
             list(
@@ -168,17 +172,19 @@ class ElevatorSimulator:
 
         # a dictionary for info, should be used to pass information about the run from
         # then env to an algorithm for logging
-        info_dictionary = {'needs_decision':needs_decision}
+        info_dictionary = {"needs_decision": needs_decision}
 
-        time_dictionary = {"time_seconds": np.array([ self.world_time], dtype=np.float32),
-                            "time_since_last_seconds":np.array([time_since_last], dtype=np.float32)}
+        time_dictionary = {
+            "time_seconds": np.array([self.world_time], dtype=np.float32),
+            "time_since_last_seconds": np.array([time_since_last], dtype=np.float32),
+        }
 
         # create dictionary with corrects types expected from gymnasium
         observations = {
             "floors": floor_buttons,
             "num_elevators": np.array([self.num_elevators], dtype=np.uint8),
             "time": time_dictionary,
-            "elevators": tuple(elevator_data)
+            "elevators": tuple(elevator_data),
         }
         #       observation   reward  terminated? truncated? info
         return (observations, -loss, self.done, False, info_dictionary)
@@ -239,6 +245,7 @@ class ElevatorSimulator:
         ) / self.decay_rate**3
 
         return ind_loss
+
     def _ind_loss2(self, time_step: float, x_0: float) -> float:
         """Calculates the loss that an indiviual person contributes to the total loss.
 
@@ -249,7 +256,11 @@ class ElevatorSimulator:
         Returns:
             float: the loss for that person
         """
-        ind_loss = 1/3 * ((self.world_time - x_0)**3 - (self.world_time - time_step - x_0)**3)
+        ind_loss = (
+            1
+            / 3
+            * ((self.world_time - x_0) ** 3 - (self.world_time - time_step - x_0) ** 3)
+        )
 
         return ind_loss
 
@@ -295,21 +306,13 @@ class ElevatorSimulator:
                 for start_time, end_floor in target_queue[arrived_floor]:
                     self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
-                    
     def step(self, actions, max_step_size=None) -> tuple:
-
         # if action is defined => execute the actions by sending them to the elevators
         if actions is not None:
             targets = actions["target"]
             next_movements = actions["next_move"]
             for i, elevator in enumerate(self.elevators):
                 elevator.set_target_position(targets[i], next_movements[i])
-                if (
-                    elevator.get_target_position() != elevator.get_position()
-                    or next_movements[i] != 0
-                    and elevator not in self.active_elevators
-                ):
-                    self.active_elevators.add(elevator)
 
         # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
@@ -332,7 +335,9 @@ class ElevatorSimulator:
 
         # Get next elevator arrival
         next_elevator: Elevator | None = None
-        elevator_arrival_times = [(elevator, elevator.get_time_to_target()) for elevator in self.active_elevators ]
+        elevator_arrival_times = [
+            (elevator, elevator.get_time_to_target()) for elevator in self.elevators
+        ]
 
         if len(elevator_arrival_times) == 0:
             next_elevator_time = np.infty
@@ -342,9 +347,9 @@ class ElevatorSimulator:
             )
 
         # Test if max_step_size is less than the next event, then just advance simulation max_step_size
-        if (max_step_size is not None and
-            max_step_size < min(next_elevator_time,next_arrival - self.world_time)):
-
+        if max_step_size is not None and max_step_size < min(
+            next_elevator_time, next_arrival - self.world_time
+        ):
             for elevator in self.elevators:
                 elevator.advance_simulation(max_step_size)
                 self._handle_arrivals_departures(elevator)
@@ -371,27 +376,18 @@ class ElevatorSimulator:
                     "Wrong person input: Target Floor and Start Floor are equal"
                 )
             self.next_arrival_index += 1
-        
-        # had to disable this as this was causing problems, and i (simon) dont see why this was neccessary 
-        # in the first place. only commented it out as someone might have had a reason
-        """elif next_elevator.next_movement == 0:
-            next_elevator.vibe_check(arrived_floor=next_elevator.get_position())
-            self.active_elevators.remove(
-                next_elevator
-            )  # TODO check if this makes sense #doubt
-        """ 
-        if(next_arrival > self.world_time + next_elevator_time):
+
+        if next_arrival > self.world_time + next_elevator_time:
             # update the time of the simulation and remember how big the interval was (for the loss function)
             self.world_time += next_elevator_time
 
             # simulate elevators till elevator arrives
             for elevator in self.elevators:
                 elevator.advance_simulation(next_elevator_time)
-            
+
             assert next_elevator is not None
             self._handle_arrivals_departures(next_elevator)
         # Arrivals handled
 
         # return the data for the observations
         return self.get_observations()
-
