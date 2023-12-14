@@ -1,4 +1,3 @@
-import numpy as np
 from ml.scheduler import Scheduler
 
 # Nearest Car: Compute for every call which elevator should serve it.
@@ -13,13 +12,54 @@ from ml.scheduler import Scheduler
 # Position where to go next (Array: [6,2,5,6,0])
 
 
+class Elevator:
+    def __init__(
+        self,
+        elevator_number,
+        current_postion=0,
+        target=None,
+        next_move=0,
+        buttons_inside=[],
+        speed=0,
+        door=[],
+        max_acceleration=1,
+    ) -> None:
+        self.speed = speed
+        self.number = elevator_number
+        self.direction = self.update_direction()
+        self.buttons_inside = buttons_inside
+        self.floors_next_move = self.buttons_inside
+        self.position: float = current_postion
+        self.max_acceleration = max_acceleration
+        self.door: float = door
+        self.next_move = next_move
+        self.door_moving_direction = 0
+        if target is None:
+            self.target = current_postion
+
+    def can_serve(self, position):
+        distance = abs(position - self.position)
+        min_distance_needed = (self.speed**2) / (2 * self.max_acceleration)
+        return min_distance_needed - 0.000001 <= distance
+
+    def update_direction(self):
+        return 0 if self.speed == 0 else self.speed / abs(self.speed)
+
+    def call_is_on_route(self, call):
+        return (
+            sum(self.buttons_inside) == 0
+            or (self.position <= call["floor"] <= self.target and call["direction"] == 1)
+            or (self.position >= call["floor"] >= self.target and call["direction"] == -1)
+        )
+
+
 class NearestCar(Scheduler):
     def __init__(self, num_elevators, num_floors, max_speed, max_acceleration) -> None:
         super().__init__(num_elevators, num_floors, max_speed, max_acceleration)
         self.elevators = [
             Elevator(
-                i,
-                0,
+                elevator_number=i,
+                current_postion=0,
                 max_acceleration=max_acceleration,
                 buttons_inside=[0] * num_floors,
                 door=0,
@@ -34,93 +74,73 @@ class NearestCar(Scheduler):
         return self.scheduler_nearest_car(calls)
 
     def scheduler_nearest_car(self, calls):
-        target = [-1] * len(self.elevators)
-
         for elevator in self.elevators:
-            potential_target_floors = [
-                i for i, x in enumerate(elevator.buttons_inside) if x == 1
-            ]
+            potential_target_floors = [i for i, x in enumerate(elevator.buttons_inside) if x == 1]
             if len(potential_target_floors) > 0:
-                closest_floor = min(
-                    potential_target_floors, key=lambda x: abs(x - elevator.position)
-                )
-                target[elevator.number] = closest_floor
+                closest_floor = min(potential_target_floors, key=lambda x: abs(x - elevator.position))
+                elevator.target = closest_floor
 
         # calculate for every call which elevator will serve it
-        target, next_move = self.evaluate_calls(target, self.elevators, calls)
+        self.evaluate_calls(calls)
 
-        # print("Call", call["direction"], "at floor",call["floor"]," will be served by elevator", best_elevator.number)
-        target = [
-            target[i]
-            if target[i] != -1
-            else elevator.position
-            if elevator.can_serve(elevator.position)
-            else elevator.position - 1
-            if elevator.can_serve(elevator.position - 1)
-            else elevator.position + 1
-            for i, elevator in enumerate(self.elevators)
-        ]
+        return {
+            "target": [e.target for e in self.elevators],
+            "next_move": [e.next_move for e in self.elevators],
+        }
 
-        return {"target": target, "next_move": next_move}
-
-    def evaluate_calls(self, target, elevators, calls) -> tuple:
-        next_move = np.array([0] * len(self.elevators))
+    def evaluate_calls(self, calls):
         busy_elevators = {}
         call_stack = calls
         while len(call_stack) > 0:
             call = call_stack.pop()
-            fs_values = [
-                self.calc_fs(call["direction"], call["floor"], elev) - 0.1 * elev.door
-                for elev in elevators
-            ]
-            # cycle through elevators using the decreasing fs value
-            for elev in sorted(
-                elevators, key=lambda x: fs_values[x.number], reverse=True
-            ):
-                if elev.call_is_on_route(call, target):
-                    if (
-                        elev in busy_elevators
-                        and busy_elevators[elev][1] < fs_values[elev.number]
-                    ):
-                        busy_elevators[elev] = (call, fs_values[elev.number])
+            fs_values = [self.calc_fs(call["direction"], call["floor"], elev) for elev in self.elevators]
+            # cycle through self.elevators using the decreasing fs value
+            for elev in sorted(self.elevators, key=lambda x: fs_values[x.number], reverse=True):
+                if elev.call_is_on_route(call):
+                    if elev in busy_elevators and busy_elevators[elev][1] < fs_values[elev.number]:
                         call_stack.append(busy_elevators[elev][0])
+                        busy_elevators[elev] = (call, fs_values[elev.number])
                         break
                     elif elev not in busy_elevators:
                         busy_elevators[elev] = (call, fs_values[elev.number])
                         break
-        for elev, call in busy_elevators.items():
-            target[elev.number] = call[0]["floor"]
-            next_move[elev.number] = call[0]["direction"]
-        return target, next_move
+        for elev in self.elevators:
+            if elev in busy_elevators:
+                call = busy_elevators[elev][0]
+                elev.target = call["floor"]
+                elev.next_move = call["direction"]
+            else:
+                elev.next_move = 0
 
-    def calc_fs(self, call_direction, call_floor, elevator):
+    def calc_fs(self, call_direction, call_floor, elevator: Elevator):
         distance = abs(elevator.position - call_floor)
 
         # check if elevator can not serve floor RET0
         if not elevator.can_serve(call_floor):
-            return 0
+            fs = 0
 
         # elevator is moving away from call RER1
-        if (elevator.direction == 1 and elevator.position > call_floor) or (
+        elif (elevator.direction == 1 and elevator.position > call_floor) or (
             elevator.direction == -1 and elevator.position < call_floor
         ):
-            return 1
+            fs = 1
 
         # # elevator is not moving RET 1.1 TODO decide on this value
-        if elevator.direction == 0:
-            return self.N + 1.5 - distance
+        elif elevator.direction == 0:
+            fs = self.N + 1.5 - distance - 0.1 * elevator.door
 
         # vvv at this point elevator is moving towards call vvv
-        # if direction of elevator the same as call direction RET (N+2)-d
-        if elevator.direction == call_direction:
-            return self.N + 2 - distance
+        # elif direction of elevator the same as call direction RET (N+2)-d
+        elif elevator.direction == call_direction:
+            fs = self.N + 2 - distance
 
-        # if direction of elevator the oposit as call direction RET (N+1)-d
-        if elevator.direction == call_direction * -1:
-            return self.N + 1 - distance
+        # elif direction of elevator the oposit as call direction RET (N+1)-d
+        elif elevator.direction == call_direction * -1:
+            fs = self.N + 1 - distance
+        else:
+            raise Exception("Something went wrong")
 
-        # this should not happen
-        raise Exception("[Nearest Car] should not happen")
+        return fs
 
     def floors_to_calls(self, floors):
         out = []
@@ -134,49 +154,10 @@ class NearestCar(Scheduler):
 
     def update_elevators(self, observations):
         for i, elevator in enumerate(self.elevators):
-            elevator.position = observations["position"][i]
-            elevator.speed = observations["speed"][i]
+            elevator.position = observations["elevators"][i]["position"][0]
+            elevator.speed = observations["elevators"][i]["speed"][0]
             elevator.update_direction()
-            elevator.buttons_inside = observations["buttons"][i]
-            elevator.door = observations["doors_state"][i]
-
-
-class Elevator:
-    def __init__(
-        self,
-        elevator_number,
-        current_postion=0,
-        buttons_inside=[],
-        speed=0,
-        door=[],
-        max_acceleration=1,
-    ) -> None:
-        self.speed = speed
-        self.number = elevator_number
-        self.direction = self.update_direction()
-        self.buttons_inside = buttons_inside
-        self.floors_next_move = self.buttons_inside
-        self.position: float = current_postion
-        self.max_acceleration = max_acceleration
-        self.door: float = door
-
-    def can_serve(self, position):
-        distance = abs(position - self.position)
-        min_distance_needed = (self.speed**2) / (2 * self.max_acceleration)
-        return min_distance_needed - 0.000001 <= distance
-
-    def update_direction(self):
-        return 0 if self.speed == 0 else self.speed / abs(self.speed)
-
-    def call_is_on_route(self, call, target):
-        return (
-            sum(self.buttons_inside) == 0
-            or (
-                self.position <= call["floor"] <= target[self.number]
-                and call["direction"] == 1
-            )
-            or (
-                self.position >= call["floor"] >= target[self.number]
-                and call["direction"] == -1
-            )
-        )
+            elevator.buttons_inside = observations["elevators"][i]["buttons"]
+            elevator.door = observations["elevators"][i]["doors_state"][0]
+            elevator.door_moving_direction = observations["elevators"][i]["doors_moving_direction"][0]
+            elevator.target = observations["elevators"][i]["target"]

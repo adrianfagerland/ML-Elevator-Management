@@ -1,15 +1,15 @@
-import sys
-
 import pygame
 
-# difine colors
+from elevator_management.vis.visualizer import Visualizer
+
+# define colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (240, 240, 240)
 DARK_GRAY = (150, 150, 150)
 LIGHT = (242, 200, 92)
 
-# difine positions
+# define positions
 WINDOW_WIDTH = 900
 WINDOW_HEIGHT = 600
 
@@ -20,12 +20,10 @@ GROUND_FLOOR = 500
 # X_OFFSET = 250
 Y_OFFSET = 10
 FLOOR_SIZE = ELEVATOR_HEIGHT + Y_OFFSET
-X_OFFSET = (
-    lambda num_elev: (WINDOW_WIDTH / 2) - num_elev * (ELEVATOR_WIDTH + X_GAP) * 0.5 - 10
-)
+X_OFFSET = lambda num_elev: (WINDOW_WIDTH / 2) - num_elev * (ELEVATOR_WIDTH + X_GAP) * 0.5 - 10
 
 
-class Visualizer:
+class PyGameVisualizer(Visualizer):
     def __init__(self, observations, width=WINDOW_WIDTH, height=WINDOW_HEIGHT) -> None:
         pygame.init()
 
@@ -34,10 +32,8 @@ class Visualizer:
         self.height = height
         self.window = pygame.display.set_mode((self.width, self.height))
 
-        pygame.display.set_caption("Tsinghua Elevator")
-
         # get bsic parameter
-        elev_positions = observations["position"]
+        elev_positions = [e["position"] for e in observations["elevators"]]
         buttons_out = observations["floors"]
         self.num_elev = len(elev_positions)
         self.num_floors = len(buttons_out)
@@ -50,7 +46,10 @@ class Visualizer:
             elevator: Elevator = Elevator(idx, observations, self.window)
             self.elevators_plots.append(elevator)
 
-    def update(self, observations, action):
+    def setup(self):
+        pygame.display.set_caption("Tsinghua Elevator")
+
+    def visualize(self, observations, previous_action):
         # draw all. The order matters
 
         self.window.fill(WHITE)
@@ -62,14 +61,14 @@ class Visualizer:
         self.all_sprites.update(observations)
 
         for e in self.elevators_plots:
-            if action is None:
+            if previous_action is None:
                 continue
             if (
-                observations["doors_state"][e.number] == 0
-                and action["target"][e.number] != observations["position"][e.number]
+                observations["elevators"][e.number]["doors_state"] == 0
+                and previous_action["target"][e.number] != observations["elevators"][e.number]["position"]
             ):
                 font = pygame.font.Font("freesansbold.ttf", 12)
-                t = int(action["target"][e.number])
+                t = int(previous_action["target"][e.number])
                 text = font.render(str(t), True, LIGHT)
                 self.window.blit(
                     text,
@@ -83,9 +82,7 @@ class Visualizer:
 
     def draw_surrounding(self, observations):
         # draw sky
-        pygame.draw.rect(
-            self.window, (214, 239, 255), (0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
-        )
+        pygame.draw.rect(self.window, (214, 239, 255), (0, 0, WINDOW_WIDTH, WINDOW_HEIGHT))
         # draw gras
         pygame.draw.polygon(
             self.window,
@@ -107,9 +104,7 @@ class Visualizer:
         house_h = FLOOR_SIZE * (self.num_floors)
         house_y = GROUND_FLOOR - house_h
 
-        pygame.draw.rect(
-            self.window, GRAY, (house_x, house_y, house_w, house_h)
-        )  # draw border of house
+        pygame.draw.rect(self.window, GRAY, (house_x, house_y, house_w, house_h))  # draw border of house
 
         # print floor numbers
         font = pygame.font.Font("freesansbold.ttf", 12)
@@ -124,9 +119,7 @@ class Visualizer:
             )
 
             k = GROUND_FLOOR - floor_num * FLOOR_SIZE
-            pygame.draw.line(
-                self.window, BLACK, (house_x, k), (house_x + house_w - 1, k), 1
-            )
+            pygame.draw.line(self.window, BLACK, (house_x, k), (house_x + house_w - 1, k), 1)
 
         # print calls
         calls = observations["floors"]
@@ -141,9 +134,7 @@ class Visualizer:
             c1 = DARK_GRAY
             if call[0] == 1:
                 c1 = LIGHT
-            pygame.draw.polygon(
-                self.window, c1, [(a, b), (a + g, b), (a + (g / 2), b - h)]
-            )
+            pygame.draw.polygon(self.window, c1, [(a, b), (a + g, b), (a + (g / 2), b - h)])
 
             # down pointing button
             c2 = DARK_GRAY
@@ -159,9 +150,7 @@ class Visualizer:
                 ],
             )
 
-        pygame.draw.rect(
-            self.window, DARK_GRAY, (house_x, house_y, house_w, house_h), 2
-        )  # 2 is the border thickness
+        pygame.draw.rect(self.window, DARK_GRAY, (house_x, house_y, house_w, house_h), 2)  # 2 is the border thickness
 
 
 class Elevator:
@@ -169,7 +158,7 @@ class Elevator:
     def __init__(self, number, observation, window):
         super(Elevator, self).__init__()
         self.number = number
-        self.num_elevators = len(observation["position"])
+        self.num_elevators = len(observation["elevators"])
         self.num_floors = len(observation["floors"])
 
         self.window = window
@@ -207,9 +196,9 @@ class ElevatorBody(pygame.sprite.Sprite):
         super(ElevatorBody, self).__init__()
 
         self.number = number
-        self.y = observation["position"][self.number]
+        self.y = observation["elevators"][self.number]["position"]
 
-        x = number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(len(observation["position"]))
+        x = number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(len(observation["elevators"]))
         y = GROUND_FLOOR - FLOOR_SIZE * self.y
 
         self.image = pygame.Surface((ELEVATOR_WIDTH, ELEVATOR_HEIGHT))
@@ -219,14 +208,8 @@ class ElevatorBody(pygame.sprite.Sprite):
         self.rect.y = y
 
     def update(self, observation):
-        x = self.number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(
-            len(observation["position"])
-        )
-        y = (
-            GROUND_FLOOR
-            - FLOOR_SIZE * observation["position"][self.number]
-            - ELEVATOR_HEIGHT
-        )
+        x = self.number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(len(observation["elevators"]))
+        y = GROUND_FLOOR - FLOOR_SIZE * observation["elevators"][self.number]["position"] - ELEVATOR_HEIGHT
         self.rect.y = y
 
 
@@ -238,12 +221,10 @@ class ElevatorDoor(pygame.sprite.Sprite):
     def __init__(self, number, observation, window):
         super(ElevatorDoor, self).__init__()
         self.number = number
-        self.y = observation["position"][self.number]
+        self.y = observation["elevators"][self.number]["position"]
         self.window = window
 
-        body_x = number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(
-            len(observation["position"])
-        )
+        body_x = number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(len(observation["elevators"]))
         body_y = GROUND_FLOOR - FLOOR_SIZE * self.y
 
         self.image = pygame.Surface((DOOR_WIDTH, DOOR_HEIGHT))
@@ -251,13 +232,11 @@ class ElevatorDoor(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def update(self, observation):
-        self.y = observation["position"][self.number]
-        doors_state = observation["doors_state"]
-        body_x = self.number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(
-            len(observation["position"])
-        )
+        self.y = observation["elevators"][self.number]["position"]
+        door_state = observation["elevators"][self.number]["doors_state"]
+        body_x = self.number * (ELEVATOR_WIDTH + X_GAP) + X_OFFSET(len(observation["elevators"]))
         body_y = GROUND_FLOOR - FLOOR_SIZE * self.y
-        c = doors_state[self.number] * 255
+        c = door_state * 255
         self.image.fill((c, c, c))
 
         self.rect.x = body_x + (ELEVATOR_WIDTH - DOOR_WIDTH) / 2

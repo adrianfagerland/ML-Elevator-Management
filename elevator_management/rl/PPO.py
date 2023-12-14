@@ -1,4 +1,6 @@
 # PPO-LSTM
+
+import time
 from typing import Type
 
 import gymnasium as gym
@@ -7,7 +9,13 @@ import torch as th
 import torch.nn.functional as F
 import torch.optim as optim
 from gymnasium.utils.env_checker import check_env
-from rl.network import ElevatorNetwork, alphaLSTMNetwork
+from rl.network import (
+    OUT_HIDDEN_SIZE,
+    PRE_HIDDEN_SIZE,
+    ElevatorNetwork,
+    alphaLSTMNetwork,
+)
+from vis.console import ConsoleVisualizer
 
 # Hyperparameters
 learning_rate = 0.0005
@@ -44,31 +52,6 @@ class PPO:
         self.data = []
 
         self.opt = optim.Adam(self.model.parameters())
-        """
-        self.fc1 = nn.Linear(4, 64)
-        self.lstm = nn.LSTM(64, 32)
-        self.fc_pi = nn.Linear(32, 2)
-        self.fc_v = nn.Linear(32, 1)
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
-        """
-
-    # Implement actor and critic in network
-    """
-    def pi(self, x, hidden):
-        x = F.relu(self.fc1(x))
-        x = x.view(-1, 1, 64)
-        x, lstm_hidden = self.lstm(x, hidden)
-        x = self.fc_pi(x)
-        prob = F.softmax(x, dim=2)
-        return prob, lstm_hidden
-
-    def v(self, x, hidden):
-        x = F.relu(self.fc1(x))
-        x = x.view(-1, 1, 64)
-        x, lstm_hidden = self.lstm(x, hidden)
-        v = self.fc_v(x)
-        return v
-    """
 
     def put_data(self, transition):
         self.data.append(transition)
@@ -116,9 +99,7 @@ class PPO:
         hidden_states_0 = []
         for ele_hidden_in_0 in h_in_0:
             (pre_h, pre_c), (comm_h, comm_c) = ele_hidden_in_0
-            hidden_states_0.append(
-                ((pre_h.detach(), pre_c.detach()), (comm_h.detach(), comm_c.detach()))
-            )
+            hidden_states_0.append(((pre_h.detach(), pre_c.detach()), (comm_h.detach(), comm_c.detach())))
         # detach? first hidden state
         hidden_states_1 = []
         for ele_hidden_in_0 in h_out_0:
@@ -155,26 +136,35 @@ class PPO:
             loss.mean().backward(retain_graph=True)
             self.opt.step()
 
-    def train(self, episode_length=1000):
+    def train(self, episode_length=40_000, save_model=None, save_interval=None):
         score = 0.0
-        print_interval = 20
-
+        print_interval = 1
+        print("Start training!", flush=True)
+        num_steps = 0
+        start_time = time.time()
         for n_epi in range(episode_length):
-            s, _ = env.reset()  # this determines how many elevators for this episode
+            (
+                s,
+                _,
+            ) = self.env.reset()  # this determines how many elevators for this episode
+            visualizer = ConsoleVisualizer()
+            visualizer.setup()
             done = False
             num_elevators = s["num_elevators"][0]
-            hidden_inf_out = [
-                self.model._generate_empty_hidden_state() for _ in range(num_elevators)
-            ]
+            hidden_inf_out = [self.model._generate_empty_hidden_state() for _ in range(num_elevators)]
             while not done:
                 for t in range(T_horizon):
                     hidden_inf_in = hidden_inf_out
                     fs = self.model.extract_features(s)
                     prob, hidden_inf_out = self.model.forward_actor(fs, hidden_inf_in)
 
-                    a, log_prob_a = self.model.generate_action_from_output(prob)
+                    a, log_prob_a = self.model.sample_action_from_output(prob)
 
-                    s_prime, r, done, truncated, info = env.step(a)
+                    s_prime, r, done, truncated, info = self.env.step(a)
+                    visualizer.visualize(s_prime, a)
+
+                    num_steps += 1
+
                     fs_prime = self.model.extract_features(s_prime)
                     # convert r to float (otherwise ide doesnt understand)
                     r = float(r)
@@ -198,23 +188,30 @@ class PPO:
                     if done:
                         break
 
-                trainer.update_parameters()
+                self.update_parameters()
 
-            if n_epi % print_interval == 0 and n_epi != 0:
+            print(f"Num steps performed:{num_steps}", flush=True)
+            num_steps = 0
+            if n_epi % print_interval == 0:
                 print(
-                    "# of episode :{}, avg score : {:.1f}".format(
-                        n_epi, score / print_interval
-                    )
+                    "# of episode: {}, avg score: {:.1f} time_since_start: {}".format(
+                        n_epi,
+                        score / print_interval,
+                        round(time.time() - start_time, 2),
+                    ),
+                    flush=True,
                 )
                 score = 0.0
+            # after training
+            if save_interval is not None and n_epi % save_interval == 0 and n_epi != 0:
+                assert isinstance(save_model, str)
+                print(f"Save model on episode {n_epi}", flush=True)
+                tmp_path = save_model[:-2]
+                tmp_path += "_" + str(n_epi) + ".ml"
+                th.save(self.model.state_dict(), tmp_path)
 
-        env.close()
+        # after training
+        if save_model is not None:
+            th.save(self.model.state_dict(), save_model)
 
-
-if __name__ == "__main__":
-    env = gym.make("Elevator-v0", num_floors=20, num_elevators=5)
-    check_env(env.unwrapped)
-
-    trainer = PPO(alphaLSTMNetwork, env)
-
-    trainer.train()
+        self.env.close()

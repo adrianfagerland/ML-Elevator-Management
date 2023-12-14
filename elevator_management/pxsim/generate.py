@@ -27,7 +27,8 @@ def generate_arrivals(
         Generator[Tuple[datetime.datetime, int, int], None, None]: A generator of the arrivals on the form (timestamp, startfloor, endfloor).
     """
     current_time = start_time
-    building = Building(num_floors, num_elevators, density, seed=seed)
+    #                   pass floors - 1 to building as the building includes "num_floors" as an actual floor i.e. thinks there are num_floors + ground_floor many floors
+    building = Building(num_floors - 1, num_elevators, density, seed=seed)
     for _ in range(num_arrivals):
         current_time, arrivals = building.get_next_arrivals(current_time)
         for arrival in arrivals:
