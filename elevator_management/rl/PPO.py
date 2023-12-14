@@ -15,7 +15,7 @@ from rl.network import (
     ElevatorNetwork,
     alphaLSTMNetwork,
 )
-from vis.console import print_elevator
+from vis.console import ConsoleVisualizer
 
 # Hyperparameters
 learning_rate = 0.0005
@@ -147,7 +147,8 @@ class PPO:
                 s,
                 _,
             ) = self.env.reset()  # this determines how many elevators for this episode
-            # print_elevator(s, setup=True)
+            visualizer = ConsoleVisualizer()
+            visualizer.setup()
             done = False
             num_elevators = s["num_elevators"][0]
             hidden_inf_out = [self.model._generate_empty_hidden_state() for _ in range(num_elevators)]
@@ -160,11 +161,10 @@ class PPO:
                     a, log_prob_a = self.model.sample_action_from_output(prob)
 
                     s_prime, r, done, truncated, info = self.env.step(a)
-                    # print_elevator(s_prime, 1, previous_action=a, setup=False)
+                    visualizer.visualize(s_prime, a)
 
                     num_steps += 1
 
-                    # print_elevator(s_prime, 1, previous_action=a, setup=True)
                     fs_prime = self.model.extract_features(s_prime)
                     # convert r to float (otherwise ide doesnt understand)
                     r = float(r)

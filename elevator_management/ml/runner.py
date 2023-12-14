@@ -3,7 +3,9 @@ import time
 import numpy as np
 from ml.api import ElevatorEnvironment
 from ml.scheduler import Scheduler
-from vis.console import print_elevator
+from vis.console import ConsoleVisualizer
+from vis.plot import PyGameVisualizer
+from vis.visualizer import Visualizer
 
 
 class Runner:
@@ -15,7 +17,10 @@ class Runner:
         max_speed=2,
         max_acceleration=0.4,
         seed=0,
+        should_plot=False,
+        visualizer="console",
     ) -> None:
+        assert visualizer in ["console", "pygame"]
         self.algorithm: Scheduler = algoritm(
             num_elevators=num_elevators,
             num_floors=num_floors,
@@ -32,17 +37,18 @@ class Runner:
         self.done = False
         self.truncated = False
         self.needs_decision = True
+        self.should_plot = should_plot
         obs, info = self.api.reset(seed=seed)
         self.elapsed_time = 0
         self.update_from_observations(obs, info_dict=info)
+        self.visualizer: Visualizer = ConsoleVisualizer() if visualizer == "console" else PyGameVisualizer(obs)
 
     def run(self, visualize=False, step_size=0.1):
-        # if visualize is True then step size cannot be none
-        assert not visualize or step_size is not None
         skipped_time = 0
+
         if visualize:
-            print()
-            print_elevator(self.observations, skipped_time, setup=True)
+            self.visualizer.setup()
+
         previous_action = None
         time_last_print = time.time()
 
@@ -59,13 +65,8 @@ class Runner:
             self.update_from_observations(obs, reward=reward, done=done, trunc=trunc, info_dict=info)
 
             if visualize:
-                elapsed_time = (
-                    self.observations["time"]["time_since_last_seconds"]
-                    + self.observations["time"]["time_since_last_seconds"] * 60
-                )
-
                 time_since_last_print = time.time() - time_last_print
-                print_elevator(self.observations, previous_action=previous_action)
+                self.visualizer.visualize(self.observations, previous_action=previous_action)
                 time.sleep(max(step_size - time_since_last_print, 0))
                 time_last_print = time.time()
 
