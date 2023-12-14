@@ -99,9 +99,7 @@ class PPO:
         hidden_states_0 = []
         for ele_hidden_in_0 in h_in_0:
             (pre_h, pre_c), (comm_h, comm_c) = ele_hidden_in_0
-            hidden_states_0.append(
-                ((pre_h.detach(), pre_c.detach()), (comm_h.detach(), comm_c.detach()))
-            )
+            hidden_states_0.append(((pre_h.detach(), pre_c.detach()), (comm_h.detach(), comm_c.detach())))
         # detach? first hidden state
         hidden_states_1 = []
         for ele_hidden_in_0 in h_out_0:
@@ -152,9 +150,7 @@ class PPO:
             # print_elevator(s, setup=True)
             done = False
             num_elevators = s["num_elevators"][0]
-            hidden_inf_out = [
-                self.model._generate_empty_hidden_state() for _ in range(num_elevators)
-            ]
+            hidden_inf_out = [self.model._generate_empty_hidden_state() for _ in range(num_elevators)]
             while not done:
                 for t in range(T_horizon):
                     hidden_inf_in = hidden_inf_out
@@ -164,7 +160,7 @@ class PPO:
                     a, log_prob_a = self.model.sample_action_from_output(prob)
 
                     s_prime, r, done, truncated, info = self.env.step(a)
-                    print_elevator(s_prime, 1, previous_action=a, setup=False)
+                    # print_elevator(s_prime, 1, previous_action=a, setup=False)
 
                     num_steps += 1
 

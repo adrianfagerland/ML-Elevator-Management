@@ -29,15 +29,12 @@ class Building:
         self.probability_of_arrival_per_floor_per_person = 0.00000045
         self.weekend_factor = weekend_factor
         self.people_per_floor = [
-            num_of_people_per_floor_per_elevator * self.num_of_elevators
-            for _ in range(1, num_of_floors + 1)
+            num_of_people_per_floor_per_elevator * self.num_of_elevators for _ in range(1, num_of_floors + 1)
         ]
         self.people_per_floor.insert(0, people_at_ground_floor)
         seconds_in_a_day = 24 * 60 * 60
         seconds = np.arange(seconds_in_a_day)
-        self.distribution = (
-            np.abs(np.sin(2 * np.pi * seconds / seconds_in_a_day - np.pi / 2)) + 0.1
-        ) * 100
+        self.distribution = (np.abs(np.sin(2 * np.pi * seconds / seconds_in_a_day - np.pi / 2)) + 0.1) * 100
 
     def get_next_arrivals(self, time: datetime):
         # determine if the time is a weekend
@@ -47,9 +44,7 @@ class Building:
             weekend = 1
         current_time = time - timedelta(seconds=1)
         # calculate the number of seconds since start of day
-        time_since_start_of_day = (
-            current_time.hour * 60 + current_time.minute
-        ) * 60 + current_time.second
+        time_since_start_of_day = (current_time.hour * 60 + current_time.minute) * 60 + current_time.second
         arrivals = []
         while len(arrivals) == 0:
             current_time = current_time + timedelta(seconds=1)

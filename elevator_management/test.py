@@ -1,5 +1,4 @@
-
-print("TEST STARTED 6",flush=True)
+print("TEST STARTED 6", flush=True)
 
 
 from typing import Type
@@ -32,6 +31,6 @@ env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=600)
 trainer = PPO(alphaLSTMNetwork, env)
 
 
-trainer.train(save_model='/work/wx350715/elevator_output/model.ml', save_interval=100)
+trainer.train(save_model="/work/wx350715/elevator_output/model.ml", save_interval=100)
 
 print("TEST WORKED")

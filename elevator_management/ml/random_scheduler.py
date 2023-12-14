@@ -8,7 +8,7 @@ class RandomScheduler(Scheduler):
         super().__init__(num_elevators, num_floors, max_speed, max_acceleration)
 
     def decide(self, observations, error):
-        targets = [e["target"] for i, e in enumerate(observations['elevators'])]
+        targets = [e["target"] for i, e in enumerate(observations["elevators"])]
         random_elevator_index = random.randint(0, self.num_elevators - 1)
         targets[random_elevator_index] = random.randint(0, self.num_floors - 1)
         return {

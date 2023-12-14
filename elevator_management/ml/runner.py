@@ -55,12 +55,8 @@ class Runner:
                 action = None
 
             # If visualize is true then we need to also pass step max_step_size
-            obs, reward, done, trunc, info = self.api.step(
-                action, max_step_size=(step_size if visualize else None)
-            )
-            self.update_from_observations(
-                obs, reward=reward, done=done, trunc=trunc, info_dict=info
-            )
+            obs, reward, done, trunc, info = self.api.step(action, max_step_size=(step_size if visualize else None))
+            self.update_from_observations(obs, reward=reward, done=done, trunc=trunc, info_dict=info)
 
             if visualize:
                 elapsed_time = (
@@ -75,9 +71,7 @@ class Runner:
 
         return self.error
 
-    def update_from_observations(
-        self, obs, info_dict, reward=0, done=False, trunc=False
-    ):
+    def update_from_observations(self, obs, info_dict, reward=0, done=False, trunc=False):
         # store data for next run
         self.observations = obs
         self.done = done

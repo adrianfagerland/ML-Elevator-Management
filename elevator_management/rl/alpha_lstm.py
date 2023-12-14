@@ -49,12 +49,7 @@ class Alpha_LSTMCell(nn.Module):
         self, input: Tensor, state: Tuple[Tensor, Tensor], alpha: float = 1.0
     ) -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
         hx, cx = state
-        gates = (
-            torch.mm(input, self.weight_ih.t())
-            + self.bias_ih
-            + torch.mm(hx, self.weight_hh.t())
-            + self.bias_hh
-        )
+        gates = torch.mm(input, self.weight_ih.t()) + self.bias_ih + torch.mm(hx, self.weight_hh.t()) + self.bias_hh
         ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
         ingate = torch.sigmoid(ingate)
@@ -86,9 +81,7 @@ class Alpha_LSTMLayer(nn.Module):
 
 
 def init_stacked_lstm(num_layers, layer, first_layer_args, other_layer_args):
-    layers = [layer(*first_layer_args)] + [
-        layer(*other_layer_args) for _ in range(num_layers - 1)
-    ]
+    layers = [layer(*first_layer_args)] + [layer(*other_layer_args) for _ in range(num_layers - 1)]
     return nn.ModuleList(layers)
 
 
@@ -101,9 +94,7 @@ class AlphaStackedLSTM(nn.Module):
 
     def __init__(self, num_layers, layer, first_layer_args, other_layer_args):
         super().__init__()
-        self.layers = init_stacked_lstm(
-            num_layers, layer, first_layer_args, other_layer_args
-        )
+        self.layers = init_stacked_lstm(num_layers, layer, first_layer_args, other_layer_args)
 
     def forward(
         self, input: Tensor, states: List[Tuple[Tensor, Tensor]], alpha: float = 1
