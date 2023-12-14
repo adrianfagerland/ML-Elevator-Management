@@ -26,7 +26,6 @@ from rl.PPO import PPO
 
 
 
-print("env")
 env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=600)
 #check_env(env.unwrapped)
 

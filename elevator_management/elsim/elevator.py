@@ -463,7 +463,9 @@ class Elevator:
         return self.trajectory_list[0].doors_open
 
     def are_doors_opening(self) -> bool:
-        return self.trajectory_list[0].are_doors_opening()
+        return (
+            self.trajectory_list[0].are_doors_opening() and self.get_doors_open() != 1
+        )  # second condition is needed because there is a bug somewhere else
 
     def set_doors_open(self, new_percentage_open: float):
         """Set the doors_open value for the elevator.

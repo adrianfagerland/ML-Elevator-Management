@@ -1,28 +1,21 @@
 # PPO-LSTM
 
+import time
 from typing import Type
 
 import gymnasium as gym
 import ml.api  # needs to be imported for the env registration
-
 import torch as th
-
 import torch.nn.functional as F
-
 import torch.optim as optim
-
 from gymnasium.utils.env_checker import check_env
-
 from rl.network import (
     OUT_HIDDEN_SIZE,
     PRE_HIDDEN_SIZE,
     ElevatorNetwork,
     alphaLSTMNetwork,
 )
-
 from vis.console import print_elevator
-
-import time
 
 # Hyperparameters
 learning_rate = 0.0005
@@ -59,7 +52,6 @@ class PPO:
         self.data = []
 
         self.opt = optim.Adam(self.model.parameters())
-
 
     def put_data(self, transition):
         self.data.append(transition)
@@ -149,12 +141,15 @@ class PPO:
     def train(self, episode_length=40_000, save_model=None, save_interval=None):
         score = 0.0
         print_interval = 1
-        print("Start training!",flush=True)
+        print("Start training!", flush=True)
         num_steps = 0
         start_time = time.time()
         for n_epi in range(episode_length):
-            s, _ = self.env.reset()  # this determines how many elevators for this episode
-            #print_elevator(s, setup=True)
+            (
+                s,
+                _,
+            ) = self.env.reset()  # this determines how many elevators for this episode
+            # print_elevator(s, setup=True)
             done = False
             num_elevators = s["num_elevators"][0]
             hidden_inf_out = [
@@ -169,45 +164,58 @@ class PPO:
                     a, log_prob_a = self.model.sample_action_from_output(prob)
 
                     s_prime, r, done, truncated, info = self.env.step(a)
-                    
+                    print_elevator(s_prime, 1, previous_action=a, setup=False)
+
                     num_steps += 1
 
-                    #print_elevator(s_prime, 1, previous_action=a, setup=True)
+                    # print_elevator(s_prime, 1, previous_action=a, setup=True)
                     fs_prime = self.model.extract_features(s_prime)
                     # convert r to float (otherwise ide doesnt understand)
                     r = float(r)
                     # get probability of action a
 
-                    self.put_data((fs, a,r / 100.0,fs_prime,log_prob_a,hidden_inf_in,hidden_inf_out,done,))
+                    self.put_data(
+                        (
+                            fs,
+                            a,
+                            r / 100.0,
+                            fs_prime,
+                            log_prob_a,
+                            hidden_inf_in,
+                            hidden_inf_out,
+                            done,
+                        )
+                    )
                     s = s_prime
-                    
+
                     score += r
                     if done:
                         break
 
                 self.update_parameters()
-            
+
             print(f"Num steps performed:{num_steps}", flush=True)
             num_steps = 0
             if n_epi % print_interval == 0:
                 print(
-                    "# of episode :{}, avg score : {:.1f} time_since_start: {}".format(
-                        n_epi, score / print_interval, round(time.time() - start_time,2)
-                    ), flush=True
+                    "# of episode: {}, avg score: {:.1f} time_since_start: {}".format(
+                        n_epi,
+                        score / print_interval,
+                        round(time.time() - start_time, 2),
+                    ),
+                    flush=True,
                 )
                 score = 0.0
             # after training
-            if(save_interval is not None and n_epi % save_interval == 0 and n_epi != 0):
+            if save_interval is not None and n_epi % save_interval == 0 and n_epi != 0:
                 assert isinstance(save_model, str)
                 print(f"Save model on episode {n_epi}", flush=True)
                 tmp_path = save_model[:-2]
-                tmp_path +="_" + str(n_epi) + ".ml"
+                tmp_path += "_" + str(n_epi) + ".ml"
                 th.save(self.model.state_dict(), tmp_path)
-        
+
         # after training
-        if(save_model is not None):
+        if save_model is not None:
             th.save(self.model.state_dict(), save_model)
-        
+
         self.env.close()
-
-

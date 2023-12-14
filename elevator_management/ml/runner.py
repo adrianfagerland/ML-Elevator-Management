@@ -55,27 +55,33 @@ class Runner:
                 action = None
 
             # If visualize is true then we need to also pass step max_step_size
-            obs, reward, done, trunc, info = self.api.step(action, max_step_size=(step_size if visualize else None))
-            self.update_from_observations(obs, reward=reward, done=done, trunc=trunc, info_dict=info)
+            obs, reward, done, trunc, info = self.api.step(
+                action, max_step_size=(step_size if visualize else None)
+            )
+            self.update_from_observations(
+                obs, reward=reward, done=done, trunc=trunc, info_dict=info
+            )
 
             if visualize:
-                elapsed_time = self.observations['time']['time_since_last_seconds'] + \
-                    self.observations['time']['time_since_last_seconds'] * 60
-
-
+                elapsed_time = (
+                    self.observations["time"]["time_since_last_seconds"]
+                    + self.observations["time"]["time_since_last_seconds"] * 60
+                )
 
                 time_since_last_print = time.time() - time_last_print
-                time.sleep(max(step_size - time_since_last_print,0))
                 print_elevator(self.observations, previous_action=previous_action)
+                time.sleep(max(step_size - time_since_last_print, 0))
                 time_last_print = time.time()
 
         return self.error
 
-    def update_from_observations(self, obs, info_dict, reward=0, done=False, trunc=False):
+    def update_from_observations(
+        self, obs, info_dict, reward=0, done=False, trunc=False
+    ):
         # store data for next run
         self.observations = obs
         self.done = done
         self.truncated = trunc
-        self.needs_decision = info_dict['needs_decision']
+        self.needs_decision = info_dict["needs_decision"]
         # log data
         self.error += reward

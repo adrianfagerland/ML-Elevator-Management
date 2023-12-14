@@ -1,5 +1,3 @@
-import csv
-from datetime import datetime
 from random import Random
 
 import numpy as np
@@ -330,7 +328,7 @@ class ElevatorSimulator:
                         and self.arrivals[i][0] < new_arrival_time
                     ):
                         i += 1
-                    for start_time, end_floor in target_queue_floor[arrived_floor]:
+                    for start_time, end_floor in target_queue_floor:
                         self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
     def get_number_of_people_in_sim(self):
@@ -393,17 +391,12 @@ class ElevatorSimulator:
 
         # Get next elevator arrival
         next_elevator: Elevator | None = None
-
         elevator_arrival_times = [
             (elevator, elevator.get_time_to_target()) for elevator in self.elevators
         ]
-
-        if len(elevator_arrival_times) == 0:
-            next_elevator_time = np.infty
-        else:
-            next_elevator, next_elevator_time = min(
-                elevator_arrival_times, key=lambda x: x[1]
-            )
+        next_elevator, next_elevator_time = min(
+            elevator_arrival_times, key=lambda x: x[1]
+        )
 
         # Test if max_step_size is less than the next event, then just advance simulation max_step_size
         if max_step_size is not None and max_step_size < min(
@@ -418,10 +411,10 @@ class ElevatorSimulator:
         step_size = next_arrival - self.world_time
         if next_arrival < self.world_time + next_elevator_time:
             # update the time of the simulation and remember how big the interval was (for the loss function)
-            self.world_time = next_arrival
             # simulate elevators till person arrives
             for elevator in self.elevators:
                 elevator.advance_simulation(next_arrival - self.world_time)
+            self.world_time = next_arrival
 
             # person arrives. Add them to the right queues and update the buttons pressed
             if floor_end > floor_start:
@@ -436,7 +429,6 @@ class ElevatorSimulator:
                 )
 
             self.next_arrival_index += 1
-
         if next_arrival > self.world_time + next_elevator_time:
             # update the time of the simulation and remember how big the interval was (for the loss function)
             self.world_time += next_elevator_time
