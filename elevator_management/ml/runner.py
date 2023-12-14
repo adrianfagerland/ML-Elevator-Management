@@ -5,6 +5,7 @@ from ml.api import ElevatorEnvironment
 from ml.nearest_car import NearestCar
 from ml.scheduler import Scheduler
 from vis.console import print_elevator
+from vis.plot import Visualizer
 
 
 class Runner:
@@ -36,17 +37,22 @@ class Runner:
         self.update_from_observations(self.api.reset(seed=seed))
 
     def run(self, visualize=False, step_size=0.1):
+        should_plot = False
         # if visualize is True then step size cannot be none
         assert not visualize or step_size is not None
         skipped_time = 0
+        
+        visulizer = Visualizer(self.observations)
         if visualize:
-            print()
             print_elevator(self.observations, skipped_time, setup=True)
+
         previous_action = None
         previous_observation = None
 
         while not self.done:
             if visualize:
+                
+                visulizer.update(observations=self.observations, action = previous_action)
                 print_elevator(self.observations, skipped_time, previous_action)
                 if previous_observation is not None and not all(
                     [
