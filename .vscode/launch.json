@@ -34,6 +34,14 @@
             "cwd": "${workspaceFolder}/elevator_management"
         },
         {
+            "name": "Python: Main",
+            "type": "python",
+            "request": "launch",
+            "module": "main",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/elevator_management"
+        },
+        {
             "name": "Python: File",
             "type": "python",
             "request": "launch",

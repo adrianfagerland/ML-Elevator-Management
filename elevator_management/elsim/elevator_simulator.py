@@ -4,7 +4,12 @@ from random import Random
 
 import numpy as np
 from elsim.elevator import Elevator
-from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, LOSS_FACTOR
+from elsim.parameters import (
+    DOOR_OPENING_TIME,
+    DOOR_STAYING_OPEN_TIME,
+    LOSS_FACTOR,
+    WAITING_MAX_TIME,
+)
 from pxsim.generate import generate_arrivals
 
 
@@ -45,7 +50,7 @@ class ElevatorSimulator:
         self.random_init = random_elevator_init
         self.done = False
         self.num_arrivals = num_arrivals
-        self.active_elevators = set()
+
 
         self.r = Random(random_seed)
 
@@ -255,58 +260,65 @@ class ElevatorSimulator:
 
         return ind_loss
 
+    def _ind_loss3(self, time_step: float, x_0: float) -> float:
+        return 0
     def _handle_arrivals_departures(self, next_elevator: Elevator):
         
-        assert next_elevator.is_at_target()
-        next_elevator.handle_arrive()
+        # only let people leave and join if the doors of the elevator are open
+        if(next_elevator.get_doors_open()):
+            # people leave on the floor
+            next_elevator.handle_arrive()
+            # now find people that want to enter
+            arrived_floor = int(next_elevator.get_position())
+            target_queue_floor = None
+            # if elevator has no next_movement set allow either queue to be 
+            if(next_elevator.next_movement == 0):
+                # do people want to join, which want to go up?
+                if(len(self.floor_queue_list_up[arrived_floor]) > 0):
+                    target_queue_floor = self.floor_queue_list_up[arrived_floor]
+                # do people want to join, which want to go down?
+                elif(len(self.floor_queue_list_down[arrived_floor]) > 0):
+                    target_queue_floor = self.floor_queue_list_down[arrived_floor]
+            else:
+                # next_movement was set, only allow people to join that go in the direction of the elevator
+                if next_elevator.next_movement == 1:
+                    target_queue_floor = self.floor_queue_list_up[arrived_floor]
+                elif next_elevator.next_movement == -1:
+                    target_queue_floor = self.floor_queue_list_down[arrived_floor]
 
-        arrived_floor = int(next_elevator.get_position())
-        target_queue_floor = None
-        # if elevator has no next_movement set allow either queue to be 
-        if(next_elevator.next_movement == 0):
-            # do people want to join, which want to go up?
-            if(len(self.floor_queue_list_up[arrived_floor]) > 0):
-                target_queue_floor = self.floor_queue_list_up[arrived_floor]
-            # do people want to join, which want to go down?
-            elif(len(self.floor_queue_list_down[arrived_floor]) > 0):
-                target_queue_floor = self.floor_queue_list_down[arrived_floor]
-        else:
-            # next_movement was set, only allow people to join that go in the direction of the elevator
-            if next_elevator.next_movement == 1:
-                target_queue_floor = self.floor_queue_list_up[arrived_floor]
-            elif next_elevator.next_movement == -1:
-                target_queue_floor = self.floor_queue_list_down[arrived_floor]
+            # if no people are waiting then no one can join
+            if(target_queue_floor is not None):
 
+                # get possible number of joining people
+                num_possible_join = next_elevator.get_num_possible_join()
+                # take minimum of possible joins and wanted joins 
+                actual_number_of_joins = min(len(target_queue_floor), num_possible_join)
 
-        assert target_queue_floor is not None
+                # and add each one to the elevator
+                for i in range(actual_number_of_joins):
+                    next_elevator.add_rider(
+                        (
+                            target_queue_floor[i][0],
+                            self.world_time,
+                            target_queue_floor[i][1],
+                        )
+                    )
+                
+                # remove the people that went onto the elevator
+                del target_queue_floor[:actual_number_of_joins]
 
-        # get possible number of joining people
-        num_possible_join = next_elevator.get_num_possible_join()
-        # and add each one to the elevator
-        for i in range(min(len(target_queue_floor), num_possible_join)):
-            next_elevator.add_rider(
-                (
-                    target_queue_floor[i][0],
-                    self.world_time,
-                    target_queue_floor[i][1],
-                )
-            )
-        
-        # remove the people that went onto the elevator
-        target_queue_floor =  target_queue_floor[min(len(target_queue_floor[arrived_floor]), num_possible_join):]
+                # test if all people could join
+                if len(target_queue_floor) > 0:
+                    # not all people could join, press elevator button again after few seconds
+                    button_press_again_time = DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3
+                    new_arrival_time = self.world_time + button_press_again_time
 
-        # test if all people could join
-        if len(target_queue_floor) > 0:
-            # not all people could join, press elevator button again after few seconds
-            button_press_again_time = DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3
-            new_arrival_time = self.world_time + button_press_again_time
-
-            # find spot to insert new arrival
-            i = self.next_arrival_index
-            while i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time:
-                i += 1
-            for start_time, end_floor in target_queue_floor[arrived_floor]:
-                self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
+                    # find spot to insert new arrival
+                    i = self.next_arrival_index
+                    while i < len(self.arrivals) and self.arrivals[i][0] < new_arrival_time:
+                        i += 1
+                    for start_time, end_floor in target_queue_floor[arrived_floor]:
+                        self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
 
     def get_number_of_people_in_sim(self):
         """
@@ -317,7 +329,13 @@ class ElevatorSimulator:
 
         riding_elevator = sum([len(elevator.get_riders()) for elevator in self.elevators])
         return waiting_up + waiting_down + riding_elevator
-                    
+
+    def update_wait_queues_too_long_waiting(self):
+        for floor_queue in self.floor_queue_list_down:
+            for idx, person in enumerate(floor_queue):
+                if(self.world_time - person[0] > WAITING_MAX_TIME):
+                    del floor_queue[idx]
+
     def step(self, actions, max_step_size=None) -> tuple:
 
         # if action is defined => execute the actions by sending them to the elevators
@@ -325,13 +343,14 @@ class ElevatorSimulator:
             targets = actions["target"]
             next_movements = actions["next_move"]
             for i, elevator in enumerate(self.elevators):
-                elevator.set_target_position(targets[i], next_movements[i])
-                if (
-                    elevator.get_target_position() != elevator.get_position()
-                    or next_movements[i] != 0
-                    and elevator not in self.active_elevators
-                ):
-                    self.active_elevators.add(elevator)
+                c_target = int(targets[i])
+                # stores if the doors should open because someone is waiting
+                should_doors_open = len(self.floor_queue_list_down[c_target] + self.floor_queue_list_up[c_target]) > 0
+                elevator.set_target_position(targets[i], next_movements[i], doors_open = should_doors_open)
+
+
+        # update people that left because of too long waittime
+        self.update_wait_queues_too_long_waiting()
 
         # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
@@ -352,7 +371,7 @@ class ElevatorSimulator:
 
         # Get next elevator arrival
         next_elevator: Elevator | None = None
-        elevator_arrival_times = [(elevator, elevator.get_time_to_target()) for elevator in self.active_elevators ]
+        elevator_arrival_times = [(elevator, elevator.get_time_to_target()) for elevator in self.elevators ]
 
         if len(elevator_arrival_times) == 0:
             next_elevator_time = np.infty
@@ -387,9 +406,8 @@ class ElevatorSimulator:
                     (next_arrival, floor_end)
                 )
             else:
-                raise Exception(
-                    "Wrong person input: Target Floor and Start Floor are equal"
-                )
+                raise Exception("Wrong person input: Target Floor and Start Floor are equal")
+            
             self.next_arrival_index += 1
         
         if(next_arrival > self.world_time + next_elevator_time):
@@ -398,10 +416,13 @@ class ElevatorSimulator:
 
             # simulate elevators till elevator arrives
             for elevator in self.elevators:
-                elevator.advance_simulation(next_elevator_time)
+                has_arrived = elevator.advance_simulation(next_elevator_time)
+                if(has_arrived):
+                    self._handle_arrivals_departures(elevator)
+
+                if elevator == next_elevator:
+                    assert has_arrived
             
-            assert next_elevator is not None
-            self._handle_arrivals_departures(next_elevator)
 
         # Arrivals handled
 
