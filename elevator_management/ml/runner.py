@@ -17,6 +17,7 @@ class Runner:
         max_speed=2,
         max_acceleration=0.4,
         seed=0,
+        should_plot=False,
     ) -> None:
         self.algorithm: Scheduler = algoritm(
             num_elevators=num_elevators,
@@ -35,14 +36,16 @@ class Runner:
         self.truncated = False
         self.needs_decision = True
         self.update_from_observations(self.api.reset(seed=seed))
+        self.should_plot = should_plot
 
     def run(self, visualize=False, step_size=0.1):
-        should_plot = False
         # if visualize is True then step size cannot be none
         assert not visualize or step_size is not None
         skipped_time = 0
-        
-        visulizer = Visualizer(self.observations)
+
+        visulizer = None
+        if self.should_plot:
+            visulizer = Visualizer(self.observations)
         if visualize:
             print_elevator(self.observations, skipped_time, setup=True)
 
@@ -51,8 +54,10 @@ class Runner:
 
         while not self.done:
             if visualize:
-                
-                visulizer.update(observations=self.observations, action = previous_action)
+                if self.should_plot and visulizer is not None:
+                    visulizer.update(
+                        observations=self.observations, action=previous_action
+                    )
                 print_elevator(self.observations, skipped_time, previous_action)
                 if previous_observation is not None and not all(
                     [
