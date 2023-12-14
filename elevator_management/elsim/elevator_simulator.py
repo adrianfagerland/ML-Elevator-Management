@@ -9,6 +9,7 @@ from elsim.parameters import (
     DOOR_STAYING_OPEN_TIME,
     LOSS_FACTOR,
     WAITING_MAX_TIME,
+    Person,
 )
 from pxsim.generate import generate_arrivals
 
@@ -79,8 +80,8 @@ class ElevatorSimulator:
             ]
 
         # People positioning
-        self.floor_queue_list_up = [list() for _ in range(self.num_floors)]
-        self.floor_queue_list_down = [list() for _ in range(self.num_floors)]
+        self.floor_queue_list_up : list[list[Person]] = [list() for _ in range(self.num_floors)]
+        self.floor_queue_list_down : list[list[Person]] = [list() for _ in range(self.num_floors)]
 
         # Each elevator has a list in which every current passanger is represented by a tuple
         # each tuple consists of (arriving time, entry elevator time, target floor)
@@ -110,23 +111,11 @@ class ElevatorSimulator:
             path (str): path to the csv file
         """
 
-        all_arrivals = list(
-            generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals)
-        )
-
-        # Check that all specified floors are valid in this building
-        assert (
-            min([arrivals[2] for arrivals in all_arrivals]) >= 0
-            and max([arrivals[2] for arrivals in all_arrivals]) < self.num_floors
-        )
-        assert (
-            min([arrivals[1] for arrivals in all_arrivals]) >= 0
-            and max([arrivals[1] for arrivals in all_arrivals]) < self.num_floors
-        )
+        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals)) # type: ignore
 
         start_time = all_arrivals[0][0]
-        self.arrivals = [
-            ((arrival[0] - start_time).total_seconds(), arrival[1], arrival[2])
+        self.arrivals: list[Person] = [
+            Person((arrival[0] - start_time).total_seconds(), arrival[1], arrival[2])
             for arrival in all_arrivals
         ]
 
@@ -217,16 +206,17 @@ class ElevatorSimulator:
         for elevator in self.elevators:
             for rider in elevator.get_riders():
                 # get individual loss
-                total_loss += self._ind_loss2(time_step, rider[0]) / 5
+                # ty
+                total_loss += self._ind_loss2(time_step, rider) / 5
 
         for waiting_queue in self.floor_queue_list_down:
             for waiting_person in waiting_queue:
-                total_loss += self._ind_loss2(time_step, waiting_person[0])
+                total_loss += self._ind_loss2(time_step, waiting_person)
 
         # also punish elevator movement
         return total_loss / LOSS_FACTOR
 
-    def _ind_loss(self, time_step: float, x_0: float) -> float:
+    def _ind_loss(self, time_step: float, person_data: Person) -> float:
         """Calculates the loss that an indiviual person contributes to the total loss.
 
         Args:
@@ -236,6 +226,8 @@ class ElevatorSimulator:
         Returns:
             float: the loss for that person
         """
+        x_0 = person_data.arrival_time
+
         ind_loss = (
             self.decay_rate**2 * x_0**2 + 2 * self.decay_rate * x_0 + 2
         ) / self.decay_rate**3 - (
@@ -251,7 +243,7 @@ class ElevatorSimulator:
 
         return ind_loss
 
-    def _ind_loss2(self, time_step: float, x_0: float) -> float:
+    def _ind_loss2(self, time_step: float, person_data: Person) -> float:
         """Calculates the loss that an indiviual person contributes to the total loss.
 
         Args:
@@ -261,6 +253,8 @@ class ElevatorSimulator:
         Returns:
             float: the loss for that person
         """
+        x_0 = person_data.arrival_time
+        
         ind_loss = (
             1
             / 3
@@ -269,7 +263,9 @@ class ElevatorSimulator:
 
         return ind_loss
 
-    def _ind_loss3(self, time_step: float, x_0: float) -> float:
+    def _ind_loss3(self, time_step: float, person_data: Person) -> float:
+
+
         return 0
 
     def _handle_arrivals_departures(self, next_elevator: Elevator):
@@ -303,14 +299,10 @@ class ElevatorSimulator:
                 actual_number_of_joins = min(len(target_queue_floor), num_possible_join)
 
                 # and add each one to the elevator
-                for i in range(actual_number_of_joins):
-                    next_elevator.add_rider(
-                        (
-                            target_queue_floor[i][0],
-                            self.world_time,
-                            target_queue_floor[i][1],
-                        )
-                    )
+                for joining_person in target_queue_floor[:actual_number_of_joins]:
+                    
+                    joining_person.entry_elevator_time = self.world_time
+                    next_elevator.add_rider(joining_person)
 
                 # remove the people that went onto the elevator
                 del target_queue_floor[:actual_number_of_joins]
@@ -327,11 +319,11 @@ class ElevatorSimulator:
                     i = self.next_arrival_index
                     while (
                         i < len(self.arrivals)
-                        and self.arrivals[i][0] < new_arrival_time
+                        and self.arrivals[i].arrival_time < new_arrival_time
                     ):
                         i += 1
-                    for start_time, end_floor in target_queue_floor[arrived_floor]:
-                        self.arrivals.insert(i, (start_time, arrived_floor, end_floor))
+                    for person in target_queue_floor:
+                        self.arrivals.insert(i, person)
 
     def get_number_of_people_in_sim(self):
         """
@@ -350,7 +342,7 @@ class ElevatorSimulator:
     def update_wait_queues_too_long_waiting(self):
         for floor_queue in self.floor_queue_list_down:
             for idx, person in enumerate(floor_queue):
-                if self.world_time - person[0] > WAITING_MAX_TIME:
+                if self.world_time - person.arrival_time > WAITING_MAX_TIME:
                     del floor_queue[idx]
 
     def step(self, actions, max_step_size=None) -> tuple:
@@ -380,11 +372,14 @@ class ElevatorSimulator:
 
         # Get next person arrival if no person left set time to arrival to infty
         if self.next_arrival_index >= len(self.arrivals):
+            arriving_person = None
             next_arrival, floor_start, floor_end = np.infty, 0, 0
         else:
-            next_arrival, floor_start, floor_end = self.arrivals[
-                self.next_arrival_index
-            ]
+            arriving_person = self.arrivals[self.next_arrival_index]
+            next_arrival = arriving_person.arrival_time
+            floor_start = arriving_person.arrival
+            floor_end = arriving_person.target
+
 
         # Check if no person left to arrive
         # TODO: handle the waiting / riding people (stop until no person in the simulation)
@@ -406,9 +401,7 @@ class ElevatorSimulator:
             )
 
         # Test if max_step_size is less than the next event, then just advance simulation max_step_size
-        if max_step_size is not None and max_step_size < min(
-            next_elevator_time, next_arrival - self.world_time
-        ):
+        if(max_step_size is not None and max_step_size < min(next_elevator_time, next_arrival - self.world_time)):
             for elevator in self.elevators:
                 elevator.advance_simulation(max_step_size)
 
@@ -423,13 +416,13 @@ class ElevatorSimulator:
             for elevator in self.elevators:
                 elevator.advance_simulation(next_arrival - self.world_time)
 
+
             # person arrives. Add them to the right queues and update the buttons pressed
+            assert arriving_person is not None
             if floor_end > floor_start:
-                self.floor_queue_list_up[floor_start].append((next_arrival, floor_end))
+                self.floor_queue_list_up[floor_start].append(arriving_person)
             elif floor_end < floor_start:
-                self.floor_queue_list_down[floor_start].append(
-                    (next_arrival, floor_end)
-                )
+                self.floor_queue_list_down[floor_start].append(arriving_person)
             else:
                 raise Exception(
                     "Wrong person input: Target Floor and Start Floor are equal"

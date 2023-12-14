@@ -2,7 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from math import sqrt
 
-from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, Person
 from numpy import infty as INFTY
 from numpy import sign
 from typing_extensions import Self
@@ -87,9 +87,8 @@ class Elevator:
         self.target_position: int = int(current_position)
         self.max_occupancy = max_occupancy
         self.buttons: list = [0] * num_floors
-        # Each elevator has a list in which every current passanger is represented by a tuple
-        # each tuple consists of (arriving time, entry elevator time, target floor)
-        self.riders: list[tuple] = []
+
+        self.riders: list[Person] = []
 
         # After arriving on target floor, will the elevator continue up (1) or down (-1) or not yet decided (0)?
         # This is set before arriving, but can be ignored by the next command. This information is
@@ -105,16 +104,16 @@ class Elevator:
     def get_doors_moving_direction(self) -> int:
         return self.trajectory_list[0].doors_open_direction
 
-    def get_num_passangers(self):
+    def get_num_passangers(self) -> int:
         return len(self.riders)
 
-    def get_riders(self):
+    def get_riders(self) -> list[Person]:
         return self.riders
 
-    def add_rider(self, rider):
+    def add_rider(self, rider: Person):
         assert self.get_doors_open() == 1
         self.riders.append(rider)
-        self.buttons[rider[2]] = 1
+        self.buttons[rider.target] = 1
 
     def is_at_floor(self) -> bool:
         """
@@ -135,7 +134,7 @@ class Elevator:
             arrived_floor = int(self.get_position())
 
             # If people want to leave on that floor, remove them from riding list.
-            self.riders = [rider for rider in self.riders if rider[2] != arrived_floor]
+            self.riders = [rider for rider in self.riders if rider.target != arrived_floor]
 
             # Served the floor, set button to not pressed
             self.buttons[arrived_floor] = 0
