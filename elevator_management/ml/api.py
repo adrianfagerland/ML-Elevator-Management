@@ -179,8 +179,10 @@ class ElevatorEnvironment(gym.Env):
             action_dict["next_move"] = next_move_copy
             action_dict["target"] = target_copy
         # shift the next_move value to be in range [-1,1] instead of [0,2]
-
-        return self.simulator.step(action_dict)
+        kwargs = {}
+        if max_step_size is not None:
+            kwargs["max_step_size"] = max_step_size
+        return self.simulator.step(action_dict, **kwargs)
 
     def _set_seed(self, seed):
         pass

@@ -1,4 +1,5 @@
 import heapq
+import warnings
 from random import Random
 
 import numpy as np
@@ -7,7 +8,6 @@ from elsim.parameters import (
     DOOR_OPENING_TIME,
     DOOR_STAYING_OPEN_TIME,
     LOSS_FACTOR,
-    WAITING_MAX_TIME,
     Person,
 )
 from pxsim.generate import generate_arrivals
@@ -337,6 +337,11 @@ class ElevatorSimulator:
 
     def step(self, actions, max_step_size=(DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3)) -> tuple:
         # if action is defined => execute the actions by sending them to the elevators
+        # print a warning from the warning library if max_step_size is higher than the default
+        if max_step_size > (DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3):
+            warnings.warn(
+                "The max_step_size is higher than the default value of DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3. This might lead to unexpected behaviour."
+            )
         if actions is not None:
             targets = actions["target"]
             next_movements = actions["next_move"]
