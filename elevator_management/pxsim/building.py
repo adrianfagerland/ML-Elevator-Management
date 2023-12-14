@@ -60,6 +60,7 @@ class Building:
                     * self.people_per_floor[floor]
                     * self.distribution[time_since_start_of_day]
                     * self.weekend_factor**weekend
+                    * self.num_of_floors ** (floor == 0)
                 ):
                     if floor == 0 or self.r.random() < self.interfloor_probability:
                         target_floor = self.r.randint(1, self.num_of_floors)
