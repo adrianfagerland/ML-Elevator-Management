@@ -59,14 +59,14 @@ class Runner:
             self.update_from_observations(obs, reward=reward, done=done, trunc=trunc, info_dict=info)
 
             if visualize:
-                elapsed_time = self.observations['time']['time_since_last_seconds'] + \
-                    self.observations['time']['time_since_last_seconds'] * 60
-
-
+                elapsed_time = (
+                    self.observations["time"]["time_since_last_seconds"]
+                    + self.observations["time"]["time_since_last_seconds"] * 60
+                )
 
                 time_since_last_print = time.time() - time_last_print
-                time.sleep(max(step_size - time_since_last_print,0))
                 print_elevator(self.observations, previous_action=previous_action)
+                time.sleep(max(step_size - time_since_last_print, 0))
                 time_last_print = time.time()
 
         return self.error
@@ -76,6 +76,6 @@ class Runner:
         self.observations = obs
         self.done = done
         self.truncated = trunc
-        self.needs_decision = info_dict['needs_decision']
+        self.needs_decision = info_dict["needs_decision"]
         # log data
         self.error += reward

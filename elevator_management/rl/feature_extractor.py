@@ -1,4 +1,3 @@
-
 import gymnasium as gym
 
 # from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
@@ -30,7 +29,7 @@ class ElevatorFeatureExtractor:
         # relevant keywords for both data sets
         # data that is specific to an elevator
 
-        self.elevator_keywords = ['position', 'speed', 'buttons', 'target']
+        self.elevator_keywords = ["position", "speed", "buttons", "target"]
 
         # and data that is non-specific to an elevator
         self.group_keywords = ["floors"]  # will soon contain more (time, weekday, ...)
@@ -38,9 +37,7 @@ class ElevatorFeatureExtractor:
         # Figure out when the elevator data starts
         self.group_data_length = 0
         for key in self.group_keywords:
-            self.group_data_length += self.flatdim_from_obs_space(
-                observation_space[key]
-            )
+            self.group_data_length += self.flatdim_from_obs_space(observation_space[key])
 
         self.elevator_data_length = 0
 
@@ -50,9 +47,7 @@ class ElevatorFeatureExtractor:
         assert type(elevator_observation_space) == spaces.Dict
 
         for key in elevator_observation_space:
-            self.elevator_data_length += self.flatdim_from_obs_space(
-                elevator_observation_space[key]
-            )
+            self.elevator_data_length += self.flatdim_from_obs_space(elevator_observation_space[key])
 
     def flatdim_from_obs_space(self, space: spaces.Space) -> int:
         if isinstance(space, spaces.MultiDiscrete):
@@ -66,9 +61,7 @@ class ElevatorFeatureExtractor:
         else:
             return flatdim(space)
 
-    def flatten_rescale(
-        self, observation, observation_space: spaces.Space
-    ) -> np.ndarray:
+    def flatten_rescale(self, observation, observation_space: spaces.Space) -> np.ndarray:
         if isinstance(observation_space, spaces.Box):
             # Rescale values to be in -1,1
             rg = (observation_space.high + observation_space.low) / 2
@@ -88,9 +81,7 @@ class ElevatorFeatureExtractor:
         num_elevators = len(observations["elevators"])
 
         # Generate empty tensor
-        data_out_length = (
-            self.group_data_length + num_elevators * self.elevator_data_length
-        )
+        data_out_length = self.group_data_length + num_elevators * self.elevator_data_length
         out_tensor = np.zeros((data_out_length), dtype=np.float32)
 
         # Fill beginning of empty tensor with the group information
@@ -98,9 +89,7 @@ class ElevatorFeatureExtractor:
         last_idx = 0
         for key in self.group_keywords:
             current_idx += self.flatdim_from_obs_space(self._observation_space[key])
-            out_tensor[last_idx:current_idx] = self.flatten_rescale(
-                observations[key], self._observation_space[key]
-            )
+            out_tensor[last_idx:current_idx] = self.flatten_rescale(observations[key], self._observation_space[key])
             last_idx = current_idx
 
         sequence_space = self._observation_space["elevators"]

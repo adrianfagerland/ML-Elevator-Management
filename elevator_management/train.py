@@ -1,4 +1,3 @@
-
 from typing import Type
 
 import gymnasium as gym
@@ -25,11 +24,9 @@ import time
 from rl.PPO import PPO
 
 
-
-print("env")
 env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=600)
-#check_env(env.unwrapped)
+# check_env(env.unwrapped)
 
 trainer = PPO(alphaLSTMNetwork, env)
 
-trainer.train(save_model='/work/wx350715/elevator_output/model.ml', save_interval=100)
+trainer.train(save_model="/work/wx350715/elevator_output/model.ml", save_interval=100)

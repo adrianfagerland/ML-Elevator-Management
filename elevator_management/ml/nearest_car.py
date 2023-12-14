@@ -48,13 +48,8 @@ class Elevator:
     def call_is_on_route(self, call):
         return (
             sum(self.buttons_inside) == 0
-            or (
-                self.position <= call["floor"] <= self.target and call["direction"] == 1
-            )
-            or (
-                self.position >= call["floor"] >= self.target
-                and call["direction"] == -1
-            )
+            or (self.position <= call["floor"] <= self.target and call["direction"] == 1)
+            or (self.position >= call["floor"] >= self.target and call["direction"] == -1)
         )
 
 
@@ -80,13 +75,9 @@ class NearestCar(Scheduler):
 
     def scheduler_nearest_car(self, calls):
         for elevator in self.elevators:
-            potential_target_floors = [
-                i for i, x in enumerate(elevator.buttons_inside) if x == 1
-            ]
+            potential_target_floors = [i for i, x in enumerate(elevator.buttons_inside) if x == 1]
             if len(potential_target_floors) > 0:
-                closest_floor = min(
-                    potential_target_floors, key=lambda x: abs(x - elevator.position)
-                )
+                closest_floor = min(potential_target_floors, key=lambda x: abs(x - elevator.position))
                 elevator.target = closest_floor
 
         # calculate for every call which elevator will serve it
@@ -102,19 +93,11 @@ class NearestCar(Scheduler):
         call_stack = calls
         while len(call_stack) > 0:
             call = call_stack.pop()
-            fs_values = [
-                self.calc_fs(call["direction"], call["floor"], elev)
-                for elev in self.elevators
-            ]
+            fs_values = [self.calc_fs(call["direction"], call["floor"], elev) for elev in self.elevators]
             # cycle through self.elevators using the decreasing fs value
-            for elev in sorted(
-                self.elevators, key=lambda x: fs_values[x.number], reverse=True
-            ):
+            for elev in sorted(self.elevators, key=lambda x: fs_values[x.number], reverse=True):
                 if elev.call_is_on_route(call):
-                    if (
-                        elev in busy_elevators
-                        and busy_elevators[elev][1] < fs_values[elev.number]
-                    ):
+                    if elev in busy_elevators and busy_elevators[elev][1] < fs_values[elev.number]:
                         call_stack.append(busy_elevators[elev][0])
                         busy_elevators[elev] = (call, fs_values[elev.number])
                         break
@@ -176,7 +159,5 @@ class NearestCar(Scheduler):
             elevator.update_direction()
             elevator.buttons_inside = observations["elevators"][i]["buttons"]
             elevator.door = observations["elevators"][i]["doors_state"][0]
-            elevator.door_moving_direction = observations["elevators"][i][
-                "doors_moving_direction"
-            ][0]
+            elevator.door_moving_direction = observations["elevators"][i]["doors_moving_direction"][0]
             elevator.target = observations["elevators"][i]["target"]
