@@ -9,3 +9,5 @@ TIME_SEC = NewType("TIME_SEC", float)
 
 DIST_EPSILON = 0.01  # 1/100th of an floor allowed error due to math inaccuracys
 LOSS_FACTOR = 1e6
+
+WAITING_MAX_TIME = 4 * 60 # after 4min a person decides to walk instead of further waiting

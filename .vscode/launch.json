@@ -34,5 +34,12 @@
             "justMyCode": false,
             "cwd": "${workspaceFolder}/elevator_management"
         },
+        {
+            "name": "Python: File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "justMyCode": true
+        }
     ]
 }
