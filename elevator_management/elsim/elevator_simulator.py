@@ -104,13 +104,7 @@ class ElevatorSimulator:
             path (str): path to the csv file
         """
 
-<<<<<<< Updated upstream
-        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals))  # type: ignore
-=======
-<<<<<<< Updated upstream
-        all_arrivals = list(
-            generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals)
-        )
+        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals))
 
         # Check that all specified floors are valid in this building
         assert (
@@ -121,10 +115,6 @@ class ElevatorSimulator:
             min([arrivals[1] for arrivals in all_arrivals]) >= 0
             and max([arrivals[1] for arrivals in all_arrivals]) < self.num_floors
         )
-=======
-        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals))
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
         start_time = all_arrivals[0][0]
         self.original_arrivals: list[Person] = [
@@ -378,30 +368,6 @@ class ElevatorSimulator:
         # => either an elevator arrives or a person arrives
 
         # Get next person arrival if no person left set time to arrival to infty
-<<<<<<< Updated upstream
-        if len(self.arrivals) == 0:
-            # Check if no person left to arrive
-            # TODO: handle the waiting / riding people (stop until no person in the simulation)
-            self.done = True
-            arriving_person = None
-=======
-<<<<<<< Updated upstream
-        if self.next_arrival_index >= len(self.arrivals):
->>>>>>> Stashed changes
-            next_arrival, floor_start, floor_end = np.infty, 0, 0
-        else:
-            arriving_person = self.arrivals[0]
-            next_arrival = arriving_person.arrival_time
-            floor_start = arriving_person.arrival
-            floor_end = arriving_person.target
-
-        # Get next elevator arrival
-        next_elevator: Elevator | None = None
-<<<<<<< Updated upstream
-        elevator_arrival_times = [(elevator, elevator.get_time_to_target()) for elevator in self.elevators]
-        next_elevator, next_elevator_time = min(elevator_arrival_times, key=lambda x: x[1])
-=======
-=======
         if len(self.arrivals) == 0:
             next_arrival = np.infty
             if self.get_number_of_people_in_sim() == 0:
@@ -414,8 +380,6 @@ class ElevatorSimulator:
         # Get next elevator arrival
         elevator_arrival_times = [elevator.get_time_to_target() for elevator in self.elevators]
         next_elevator_time = min(elevator_arrival_times)
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
         step_size = next_arrival - self.world_time
         # Test if max_step_size is less than the next event, then just advance simulation max_step_size
@@ -434,16 +398,9 @@ class ElevatorSimulator:
             self.world_time = next_arrival
 
             # person arrives. Add them to the right queues and update the buttons pressed
-<<<<<<< Updated upstream
-            arriving_person = heapq.heappop(self.arrivals)
-=======
-<<<<<<< Updated upstream
-=======
             arriving_person = heapq.heappop(self.arrivals)
             floor_start = arriving_person.arrival
             floor_end = arriving_person.target
->>>>>>> Stashed changes
->>>>>>> Stashed changes
             if floor_end > floor_start:
                 self.floor_queue_list_up[floor_start].append(arriving_person)
             elif floor_end < floor_start:

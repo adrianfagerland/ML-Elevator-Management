@@ -143,25 +143,9 @@ class PPO:
         num_steps = 0
         start_time = time.time()
         for n_epi in range(episode_length):
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
             s, _ = self.env.reset()  # this determines how many elevators for this episode
-            #print_elevator(s, setup=True)
-=======
->>>>>>> Stashed changes
-            (
-                s,
-                _,
-            ) = self.env.reset()  # this determines how many elevators for this episode
-<<<<<<< Updated upstream
-            visualizer = ConsoleVisualizer()
-            visualizer.setup()
-=======
             # visualizer = ConsoleVisualizer()
             # visualizer.setup()
->>>>>>> Stashed changes
->>>>>>> Stashed changes
             done = False
             num_elevators = s["num_elevators"][0]
             hidden_inf_out = [self.model._generate_empty_hidden_state() for _ in range(num_elevators)]
@@ -174,18 +158,9 @@ class PPO:
                     a, log_prob_a = self.model.sample_action_from_output(prob)
 
                     s_prime, r, done, truncated, info = self.env.step(a)
-<<<<<<< Updated upstream
-                    visualizer.visualize(s_prime, a)
-
-=======
-<<<<<<< Updated upstream
-                    
-=======
                     # visualizer.visualize(s_prime, a)
                     # time.sleep(1)
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
                     num_steps += 1
 
                     fs_prime = self.model.extract_features(s_prime)

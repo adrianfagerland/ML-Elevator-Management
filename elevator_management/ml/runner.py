@@ -17,15 +17,7 @@ class Runner:
         max_speed=2,
         max_acceleration=0.4,
         seed=0,
-<<<<<<< Updated upstream
-        should_plot=False,
-        visualizer="console",
-=======
-<<<<<<< Updated upstream
-=======
         visualizer: str | None = "console",
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     ) -> None:
         assert visualizer in ["console", "pygame"]
         self.algorithm: Scheduler = algoritm(
@@ -44,22 +36,10 @@ class Runner:
         self.done = False
         self.truncated = False
         self.needs_decision = True
-        self.should_plot = should_plot
         obs, info = self.api.reset(seed=seed)
         self.elapsed_time = 0
         self.update_from_observations(obs, info_dict=info)
-<<<<<<< Updated upstream
-        self.visualizer: Visualizer = ConsoleVisualizer() if visualizer == "console" else PyGameVisualizer(obs)
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
 
-    def run(self, visualize=False, step_size=0.1):
-        skipped_time = 0
-<<<<<<< Updated upstream
-
-=======
-=======
         if visualizer is not None:
             assert visualizer in ["console", "pygame"]
             self.visualizer: Visualizer = ConsoleVisualizer() if visualizer == "console" else PyGameVisualizer(obs)
@@ -68,8 +48,6 @@ class Runner:
         assert step_size > 0
         assert not (visualize and self.visualizer is None)
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
         if visualize:
             self.visualizer.setup()
 
