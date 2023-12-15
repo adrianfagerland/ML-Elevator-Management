@@ -345,13 +345,9 @@ class ElevatorSimulator:
     #             if self.world_time - person.original_arrival_time > WAITING_MAX_TIME:
     #                 del floor_queue[idx]
 
-    def step(self, actions, max_step_size=(DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3)) -> tuple:
+    def step(self, actions, max_step_size=None) -> tuple:
         # if action is defined => execute the actions by sending them to the elevators
         # print a warning from the warning library if max_step_size is higher than the default
-        if max_step_size > (DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3):
-            warnings.warn(
-                "The max_step_size is higher than the default value of DOOR_STAYING_OPEN_TIME + DOOR_OPENING_TIME + 3. This might lead to unexpected behaviour."
-            )
         if actions is not None:
             targets = actions["target"]
             next_movements = actions["next_move"]
@@ -418,7 +414,6 @@ class ElevatorSimulator:
                     next_elevator_time
                 )  # I can't guarantee that the has_arrived variable is correct
                 self._handle_arrivals_departures(elevator)
-            pass
             # TODO uncomment this
             # if elevator == next_elevator:
             #     assert has_arrived
