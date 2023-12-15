@@ -157,14 +157,13 @@ class Elevator:
                 f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}"
             )
 
-        self.next_movement = next_movement
-        self.target_position: int = int(new_target_position)
-
         # if the door is currently opening or currently waiting for people, do not update the trajectory i.e. close the door
         # and move again.
         # rather open the door fully, people can then enter or exit (if there are people there)
         # and then set_target_position is called anyway, because a new target is needed
         if not (self.are_doors_opening() or self.is_waiting_for_people()):
+            self.next_movement = next_movement
+            self.target_position: int = int(new_target_position)
             self.update_trajectory(doors_open=doors_open)
 
     def update_trajectory(self, doors_open: bool):
@@ -301,7 +300,11 @@ class Elevator:
                 .set_time(DOOR_OPENING_TIME)
             )
             self.trajectory_list.append(
-                self.trajectory_list[-1].copy().set_open(DOORS_OPEN).set_time(DOOR_STAYING_OPEN_TIME)
+                self.trajectory_list[-1]
+                .copy()
+                .set_open(DOORS_OPEN)
+                .set_time(DOOR_STAYING_OPEN_TIME)
+                .set_doors_opening_direction(0)
             )
 
     def get_time_to_target(self) -> float:
@@ -401,9 +404,7 @@ class Elevator:
         return self.trajectory_list[0].doors_open
 
     def are_doors_opening(self) -> bool:
-        return (
-            self.trajectory_list[0].are_doors_opening() and self.get_doors_open() != 1
-        )  # second condition is needed because there is a bug somewhere else
+        return self.trajectory_list[0].are_doors_opening()
 
     def set_doors_open(self, new_percentage_open: float):
         """Set the doors_open value for the elevator.
