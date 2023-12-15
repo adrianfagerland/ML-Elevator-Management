@@ -97,7 +97,6 @@ class Elevator:
         self.next_movement: int = 0
 
         self.trajectory_list: list[Elevator.Trajectory] = [self.Trajectory(current_position, current_speed, 0)]
-        self._time_target: float = INFTY
 
     def get_doors_moving_direction(self) -> int:
         return self.trajectory_list[0].doors_open_direction
@@ -165,9 +164,7 @@ class Elevator:
         # and move again.
         # rather open the door fully, people can then enter or exit (if there are people there)
         # and then set_target_position is called anyway, because a new target is needed
-        if self.are_doors_opening() or self.is_waiting_for_people():
-            self._time_target = sum([trajectory_step.time for trajectory_step in self.trajectory_list])
-        else:
+        if not (self.are_doors_opening() or self.is_waiting_for_people()):
             self.update_trajectory(doors_open=doors_open)
 
     def update_trajectory(self, doors_open: bool):
@@ -318,8 +315,7 @@ class Elevator:
         # elevators that are not yet at their target
         if len(self.trajectory_list) == 1:
             return INFTY
-        self._time_target = sum([trajectory_step.time for trajectory_step in self.trajectory_list])
-        return self._time_target
+        return sum([trajectory_step.time for trajectory_step in self.trajectory_list])
 
     def advance_simulation(self, time_step: float) -> bool:
         """Moves the elevator alongs its calculated trajectory until time step is up or the trajectory is completed.
