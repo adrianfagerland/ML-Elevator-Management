@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from elsim.elevator import Elevator
 from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME
@@ -13,54 +14,38 @@ def test_time_simple():
             Elevator.Trajectory(2, 2, 2),
             Elevator.Trajectory(8, 2, 3),
             Elevator.Trajectory(10, 0, 2),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
         1: [
             Elevator.Trajectory(0.5, 1, 0),
             Elevator.Trajectory(2, 2, 1),
             Elevator.Trajectory(8, 2, 3),
             Elevator.Trajectory(10, 0, 2),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
         2: [
             Elevator.Trajectory(2, 2, 0),
             Elevator.Trajectory(8, 2, 3),
             Elevator.Trajectory(10, 0, 2),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
         3: [
             Elevator.Trajectory(4, 2, 0),
             Elevator.Trajectory(8, 2, 2),
             Elevator.Trajectory(10, 0, 2),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
         4: [
             Elevator.Trajectory(6, 2, 0),
             Elevator.Trajectory(8, 2, 1),
             Elevator.Trajectory(10, 0, 2),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
         5: [
             Elevator.Trajectory(8, 2, 0),
             Elevator.Trajectory(10, 0, 2),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
         6: [
             Elevator.Trajectory(9.5, 1, 0),
             Elevator.Trajectory(10, 0, 1),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
         7: [
             Elevator.Trajectory(10, 0, 0),
-            Elevator.Trajectory(10, 0, DOOR_OPENING_TIME, doors_open=1, doors_open_direction=1),
-            Elevator.Trajectory(10, 0, DOOR_STAYING_OPEN_TIME, doors_open=1),
         ],
     }
     for i in range(0, 8):
@@ -72,7 +57,11 @@ def test_time_simple():
         # start tests
         test_elevator.advance_simulation(i)
         assert test_elevator.trajectory_list == compare_list[i]
-        assert test_elevator.get_time_to_target() == total_time - i
+        if test_elevator.get_position() == 10:
+            assert test_elevator.get_speed() == 0
+            assert test_elevator.get_time_to_target() == np.inf
+        else:
+            assert test_elevator.get_time_to_target() == total_time - i
 
 
 def test_with_door_openings():
@@ -117,10 +106,6 @@ def test_doors_simple():
     assert pytest.approx(total_time - 0.6 * DOOR_OPENING_TIME) == test_elevator.get_time_to_target()
     assert pytest.approx(test_elevator.get_doors_open()) == 0.4
 
-    test_elevator.advance_simulation(total_time - DOOR_OPENING_TIME - DOOR_STAYING_OPEN_TIME)
-    assert pytest.approx(0.4 * DOOR_OPENING_TIME + DOOR_STAYING_OPEN_TIME) == test_elevator.get_time_to_target()
-    assert pytest.approx(test_elevator.get_doors_open()) == 0.6
-
-    test_elevator.advance_simulation(0.1 * DOOR_OPENING_TIME)
-    assert pytest.approx(0.3 * DOOR_OPENING_TIME + DOOR_STAYING_OPEN_TIME) == test_elevator.get_time_to_target()
-    assert pytest.approx(test_elevator.get_doors_open()) == 0.7
+    test_elevator.advance_simulation(total_time - 0.6 * DOOR_OPENING_TIME)
+    assert test_elevator.get_time_to_target() == np.inf
+    assert pytest.approx(test_elevator.get_doors_open()) == 0

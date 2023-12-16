@@ -4,7 +4,7 @@ import time
 from typing import Type
 
 import gymnasium as gym
-import ml.api  # needs to be imported for the env registration
+import ml.api  # needs to be imported for the env registration. Can this be moved to __init__.py?
 import torch as th
 import torch.nn.functional as F
 import torch.optim as optim

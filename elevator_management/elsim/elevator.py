@@ -163,7 +163,7 @@ class Elevator:
         # and then set_target_position is called anyway, because a new target is needed
         if not (self.are_doors_opening() or self.is_waiting_for_people()):
             self.next_movement = next_movement
-            self.target_position: int = int(new_target_position)
+            self.target_position= new_target_position
             self.update_trajectory(doors_open=doors_open)
 
     def update_trajectory(self, doors_open: bool):
