@@ -29,10 +29,14 @@ def generate_arrivals(
     current_time = start_time
     #                   pass floors - 1 to building as the building includes "num_floors" as an actual floor i.e. thinks there are num_floors + ground_floor many floors
     building = Building(num_floors - 1, num_elevators, density, seed=seed)
+    arrivals_generated = 0
     for _ in range(num_arrivals):
         current_time, arrivals = building.get_next_arrivals(current_time)
         for arrival in arrivals:
+            if arrivals_generated >= num_arrivals:
+                return
             yield arrival
+            arrivals_generated += 1
 
 
 # def write_to_csv(num_weeks, num_floors):
