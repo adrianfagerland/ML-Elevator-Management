@@ -417,13 +417,8 @@ class ElevatorSimulator:
             # simulate elevators till elevator arrives
             self.world_time += next_elevator_time
             for elevator in self.elevators:
-                has_arrived = elevator.advance_simulation(
-                    next_elevator_time
-                )  # I can't guarantee that the has_arrived variable is correct
+                elevator.advance_simulation(next_elevator_time)
                 self._handle_arrivals_departures(elevator)
-            # TODO uncomment this
-            # if elevator == next_elevator:
-            #     assert has_arrived
 
         # Arrivals handled
 
