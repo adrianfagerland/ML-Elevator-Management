@@ -246,8 +246,8 @@ def test_deep_situation_action1():
     )
     assert observation4[2] == False
     # This order is faulty
-    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})  # ensure closed door on el2
-    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})  # ensure closed door on el2
+    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})
+    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})
     simulator.step({"target": np.array([2, 0, 6]), "next_move": np.array([-1, 0, -1])})
     simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
     simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
