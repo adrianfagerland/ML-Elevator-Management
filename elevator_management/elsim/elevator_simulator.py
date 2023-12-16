@@ -414,9 +414,9 @@ class ElevatorSimulator:
         return self.get_observations()
 
     def _handle_people_arriving_at_floor(self):
-        arriving_person = heapq.heappop(self.arrivals)
         # it has to handle when several people arrive at the same time
-        while arriving_person.arrival_time == self.world_time:
+        while self.arrivals[0].arrival_time == self.world_time:
+            arriving_person = heapq.heappop(self.arrivals)
             floor_start = arriving_person.arrival
             floor_end = arriving_person.target
             if floor_end > floor_start:
@@ -427,5 +427,5 @@ class ElevatorSimulator:
                 self.new_person_arrived_at_floor[floor_start] = True
             else:
                 raise Exception("Wrong person input: Target Floor and Start Floor are equal")
-            arriving_person = heapq.heappop(self.arrivals)
-        heapq.heappush(self.arrivals, arriving_person)
+            if not self.arrivals:
+                break
