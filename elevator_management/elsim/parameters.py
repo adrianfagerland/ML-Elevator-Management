@@ -28,9 +28,20 @@ class Person:
 
     def __lt__(self, other):
         return self.arrival_time < other.arrival_time
-
+    
+    ## Make person hashable
+    def __hash__(self):
+        return id(self)
+    
+    def __eq__(self, other):
+        return id(self) == id(other)
+    
 
 DIST_EPSILON = 0.01  # 1/100th of an floor allowed error due to math inaccuracys
-LOSS_FACTOR = 1e6
+LOSS_FACTOR = 10
 
 WAITING_MAX_TIME = 4 * 60  # after 4min a person decides to walk instead of further waiting
+
+REWARD_JOINING_ELEVATOR = 0.2
+REWARD_ARRIVE_TARGET = 1
+REWARD_CUMMULATIVE_TO_TARGET = 1

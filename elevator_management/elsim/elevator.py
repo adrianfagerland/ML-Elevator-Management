@@ -118,20 +118,26 @@ class Elevator:
         """
         return self.get_position() == int(self.get_position()) and self.get_speed() == 0 and self.get_doors_open() == 1
 
-    def vibe_check(self):
+    def passengers_arrive(self) -> int:
         """
-        Handle the arrival of an elevator on a floor. Only does something if the doors are open.
+        Handle the arrival of an elevator on a floor. Only does something if the doors are open. 
+        Returns the number of people that left the elevator on that floor
         """
         # Test if doors are open and therefore people can leave
-        if self.get_doors_open():
-            arrived_floor = int(self.get_position())
+        if not self.get_doors_open():
+            return 0
+        
+        arrived_floor = int(self.get_position())
 
-            # If people want to leave on that floor, remove them from riding list.
-            self.riders = [rider for rider in self.riders if rider.target != arrived_floor]
+        # If people want to leave on that floor, remove them from riding list.
+        new_riders = [rider for rider in self.riders if rider.target != arrived_floor]
+        num_people_left = len(self.riders) - len(new_riders) 
+        self.riders = new_riders
 
-            # Served the floor, set button to not pressed
-            self.buttons[arrived_floor] = 0
-
+        # Served the floor, set button to not pressed
+        self.buttons[arrived_floor] = 0
+        return num_people_left
+    
     def get_num_possible_join(self):
         return self.max_occupancy - self.get_num_passangers()
 

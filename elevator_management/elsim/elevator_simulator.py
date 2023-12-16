@@ -1,6 +1,7 @@
 import datetime
 import heapq
 from random import Random
+from collections import defaultdict
 
 import numpy as np
 from elsim.elevator import Elevator
@@ -9,7 +10,12 @@ from elsim.parameters import (
     DOOR_STAYING_OPEN_TIME,
     LOSS_FACTOR,
     Person,
+    REWARD_ARRIVE_TARGET,
+    REWARD_CUMMULATIVE_TO_TARGET,
+    REWARD_JOINING_ELEVATOR
 )
+
+
 from pxsim.generate import generate_arrivals
 
 
@@ -51,8 +57,14 @@ class ElevatorSimulator:
         self.done = False
 
         self.num_arrivals = num_arrivals
-
         self.r = Random(random_seed)
+
+        # Loss function data: stores old 
+        self.loss_dict: dict[Person, tuple[float, bool]] = {}
+        
+
+        self.total_num_arrivals: int = 0
+        self.last_total_num_arrivals: int = 0
 
         # Init Elevators
         if self.random_init:
@@ -218,13 +230,15 @@ class ElevatorSimulator:
         for elevator in self.elevators:
             for rider in elevator.get_riders():
                 # get individual loss
-                # ty
-                total_loss += self._ind_loss2(time_step, rider) / 5
+                total_loss += self._ind_loss3(time_step, rider, elevator.get_position())
 
         for waiting_queue in self.floor_queue_list_down:
             for waiting_person in waiting_queue:
-                total_loss += self._ind_loss2(time_step, waiting_person)
-
+                total_loss += self._ind_loss3(time_step, waiting_person)
+        
+        # reward for all people arriving at the goal, regardless of their arrival time TODO: improve
+        total_loss -= (self.total_num_arrivals - self.last_total_num_arrivals) * REWARD_ARRIVE_TARGET
+        self.last_total_num_arrivals = self.total_num_arrivals
         # also punish elevator movement
         return total_loss / LOSS_FACTOR
 
@@ -269,14 +283,33 @@ class ElevatorSimulator:
 
         return ind_loss
 
-    def _ind_loss3(self, time_step: float, person_data: Person) -> float:
-        return 0
+    def _ind_loss3(self, time_step: float, person: Person, person_position: float | None = None) -> float:
+        ind_reward = 0
+        person_has_entered = (person_position is not None)
+
+        # check if person is not in dict then add it 
+        if person not in self.loss_dict:
+            self.loss_dict[person] = (person.arrival, False)
+        
+        prev_position, prev_has_entered = self.loss_dict[person]
+        
+        # test if person has entered elevator in the last step => reward if true
+        if not prev_has_entered and person_has_entered:
+            ind_reward += REWARD_JOINING_ELEVATOR
+
+        if person_position is None:
+            person_position = person.arrival
+
+        # 
+        ind_reward += (person_position - prev_position) / (person.target - person.arrival) * REWARD_CUMMULATIVE_TO_TARGET
+
+        return -ind_reward
 
     def _handle_arrivals_departures(self, next_elevator: Elevator):
         # only let people leave and join if the doors of the elevator are open
         if next_elevator.get_doors_open() == 1:
             # people leave on the floor
-            next_elevator.vibe_check()
+            self.total_num_arrivals += next_elevator.passengers_arrive()
             # now find people that want to enter
             arrived_floor = int(next_elevator.get_position())
             target_queue_floor = None
