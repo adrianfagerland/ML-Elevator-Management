@@ -81,6 +81,7 @@ class ElevatorSimulator:
         # People positioning
         self.floor_queue_list_up: list[list[Person]] = [list() for _ in range(self.num_floors)]
         self.floor_queue_list_down: list[list[Person]] = [list() for _ in range(self.num_floors)]
+        self.new_person_arrived_at_floor: list[bool] = [False for _ in range(self.num_floors)]
 
         # Each elevator has a list in which every current passanger is represented by a tuple
         # each tuple consists of (arriving time, entry elevator time, target floor)
@@ -281,28 +282,29 @@ class ElevatorSimulator:
             arrived_floor = int(next_elevator.get_position())
             target_queue_floor = None
             # if elevator has no next_movement set allow either queue to be
-            if next_elevator.next_movement == 0:
-                someone_wants_to_go_up = len(self.floor_queue_list_up[arrived_floor]) > 0
-                someone_wants_to_go_down = len(self.floor_queue_list_down[arrived_floor]) > 0
-                if someone_wants_to_go_down and someone_wants_to_go_up:
-                    # TODO this is confusing for the user, so maybe punish the model if this happens??
-                    # target queue floor is the one with the minimum [0] value
-                    target_queue_floor = min(
-                        [
-                            self.floor_queue_list_up[arrived_floor],
-                            self.floor_queue_list_down[arrived_floor],
-                        ],
-                        key=lambda x: x[0].original_arrival_time,
-                    )
-                elif someone_wants_to_go_down:
-                    target_queue_floor = self.floor_queue_list_down[arrived_floor]
-                elif someone_wants_to_go_up:
-                    target_queue_floor = self.floor_queue_list_up[arrived_floor]
+            if next_elevator.get_next_movement() == 0:
+                pass
+                # someone_wants_to_go_up = len(self.floor_queue_list_up[arrived_floor]) > 0
+                # someone_wants_to_go_down = len(self.floor_queue_list_down[arrived_floor]) > 0
+                # if someone_wants_to_go_down and someone_wants_to_go_up:
+                #     # TODO this is confusing for the user, so maybe punish the model if this happens??
+                #     # target queue floor is the one with the minimum [0] value
+                #     target_queue_floor = min(
+                #         [
+                #             self.floor_queue_list_up[arrived_floor],
+                #             self.floor_queue_list_down[arrived_floor],
+                #         ],
+                #         key=lambda x: x[0].original_arrival_time,
+                #     )
+                # elif someone_wants_to_go_down:
+                #     target_queue_floor = self.floor_queue_list_down[arrived_floor]
+                # elif someone_wants_to_go_up:
+                #     target_queue_floor = self.floor_queue_list_up[arrived_floor]
             else:
                 # next_movement was set, only allow people to join that go in the direction of the elevator
-                if next_elevator.next_movement == 1:
+                if next_elevator.get_next_movement() == 1:
                     target_queue_floor = self.floor_queue_list_up[arrived_floor]
-                elif next_elevator.next_movement == -1:
+                elif next_elevator.get_next_movement() == -1:
                     target_queue_floor = self.floor_queue_list_down[arrived_floor]
 
             # if no people are waiting then no one can join
@@ -359,13 +361,11 @@ class ElevatorSimulator:
             targets = actions["target"]
             next_movements = actions["next_move"]
             for i, elevator in enumerate(self.elevators):
-                c_target: int = int(targets[i])
-                # stores if the doors should open because someone is waiting
-                should_doors_open = len(self.floor_queue_list_down[c_target] + self.floor_queue_list_up[c_target]) > 0
-                elevator.set_target_position(c_target, next_movements[i], doors_open=should_doors_open)
-
-        # update people that left because of too long waittime
-        # self.update_wait_queues_too_long_waiting()
+                elevator.set_target_position(
+                    targets[i],
+                    next_movements[i],
+                    new_person_arrived_at_floor=self.new_person_arrived_at_floor[int(elevator.get_position())],
+                )
 
         # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
@@ -376,13 +376,12 @@ class ElevatorSimulator:
             if self.get_number_of_people_in_sim() == 0:
                 self.done = True
                 return self.get_observations()
-
         else:
             next_arrival = self.arrivals[0].arrival_time
 
         # Get next elevator arrival
-        elevator_arrival_times = [elevator.get_time_to_target() for elevator in self.elevators]
-        next_elevator_time = min(elevator_arrival_times)
+        elevator_arrival_times = [(elevator, elevator.get_time_to_target()) for elevator in self.elevators]
+        next_elevator, next_elevator_time = min(elevator_arrival_times, key=lambda x: x[1])
 
         step_size = next_arrival - self.world_time
         # Test if max_step_size is less than the next event, then just advance simulation max_step_size
@@ -399,28 +398,34 @@ class ElevatorSimulator:
             for elevator in self.elevators:
                 elevator.advance_simulation(step_size)
             self.world_time = next_arrival
-
             # person arrives. Add them to the right queues and update the buttons pressed
-            arriving_person = heapq.heappop(self.arrivals)
-            floor_start = arriving_person.arrival
-            floor_end = arriving_person.target
-            if floor_end > floor_start:
-                self.floor_queue_list_up[floor_start].append(arriving_person)
-            elif floor_end < floor_start:
-                self.floor_queue_list_down[floor_start].append(arriving_person)
-            else:
-                raise Exception("Wrong person input: Target Floor and Start Floor are equal")
+            self._handle_people_arriving_at_floor()
 
         if next_arrival > self.world_time + next_elevator_time:
-            # update the time of the simulation and remember how big the interval was (for the loss function)
-
             # simulate elevators till elevator arrives
             self.world_time += next_elevator_time
             for elevator in self.elevators:
                 elevator.advance_simulation(next_elevator_time)
-                self._handle_arrivals_departures(elevator)
+            self._handle_arrivals_departures(next_elevator)
 
         # Arrivals handled
 
         # return the data for the observations
         return self.get_observations()
+
+    def _handle_people_arriving_at_floor(self):
+        arriving_person = heapq.heappop(self.arrivals)
+        # it has to handle when several people arrive at the same time
+        while arriving_person.arrival_time == self.world_time:
+            floor_start = arriving_person.arrival
+            floor_end = arriving_person.target
+            if floor_end > floor_start:
+                self.floor_queue_list_up[floor_start].append(arriving_person)
+                self.new_person_arrived_at_floor[floor_start] = True
+            elif floor_end < floor_start:
+                self.floor_queue_list_down[floor_start].append(arriving_person)
+                self.new_person_arrived_at_floor[floor_start] = True
+            else:
+                raise Exception("Wrong person input: Target Floor and Start Floor are equal")
+            arriving_person = heapq.heappop(self.arrivals)
+        heapq.heappush(self.arrivals, arriving_person)
