@@ -1,5 +1,5 @@
+import datetime
 import heapq
-import warnings
 from random import Random
 
 import numpy as np
@@ -116,13 +116,20 @@ class ElevatorSimulator:
             and max([arrivals[1] for arrivals in all_arrivals]) < self.num_floors
         )
 
-        start_time = all_arrivals[0][0]
+        # assert there are at least 1 arrival
+        assert len(all_arrivals) > 0
+
+        # We do not always want the first person to arrive at time 0
+        # Therefore, we shift the arrival times so that the first person arrives after the same interval
+        # as between the first and second person
+        first_arrival = all_arrivals[0][0]
+        time_shift = first_arrival - datetime.timedelta(seconds=self.r.randint(1, 10))
         self.original_arrivals: list[Person] = [
             Person(
-                (arrival[0] - start_time).total_seconds(),
+                (arrival[0] - time_shift).total_seconds(),
                 arrival[1],
                 arrival[2],
-                (arrival[0] - start_time).total_seconds(),
+                (arrival[0] - time_shift).total_seconds(),
             )
             for arrival in all_arrivals
         ]  # don't know if we need to keep track of the original arrivals
@@ -352,10 +359,10 @@ class ElevatorSimulator:
             targets = actions["target"]
             next_movements = actions["next_move"]
             for i, elevator in enumerate(self.elevators):
-                c_target = int(targets[i])
+                c_target: int = int(targets[i])
                 # stores if the doors should open because someone is waiting
                 should_doors_open = len(self.floor_queue_list_down[c_target] + self.floor_queue_list_up[c_target]) > 0
-                elevator.set_target_position(targets[i], next_movements[i], doors_open=should_doors_open)
+                elevator.set_target_position(c_target, next_movements[i], doors_open=should_doors_open)
 
         # update people that left because of too long waittime
         # self.update_wait_queues_too_long_waiting()
