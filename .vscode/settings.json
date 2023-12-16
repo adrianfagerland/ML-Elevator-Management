@@ -14,7 +14,7 @@
         "--profile=black"
     ],
     "python.testing.pytestArgs": [
-        "elsim"
+        "elevator_management"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
