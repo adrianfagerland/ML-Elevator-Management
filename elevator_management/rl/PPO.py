@@ -172,7 +172,6 @@ class PPO:
                     prob, hidden_inf_out = self.model.forward_actor(extracted_features, hidden_inf_in)
 
                     action, log_prob_a = self.model.sample_action_from_output(prob)
-
                     obs_prime, reward, done, truncated, info = self.env.step(action)
                     # visualizer.visualize(s_prime, a)
                     # time.sleep(1)
@@ -198,13 +197,14 @@ class PPO:
                     time_since_last_print = time.time() - last_print_time
                     percentage_done = (info['num_people_arrived'] + info["num_walked_stairs"]) / info['total_arrivals'] * 100
 
-                    print(f"#epoch {n_epi} #steps performed:{num_steps} #steps_per_second {print_interval / time_since_last_print:.3f} last_print {time_since_last_print:.3f} done in % {percentage_done} training_time {time_since_start:.3f}", flush=True)
+                    print(f"#epoch {n_epi} #steps performed:{num_steps} #steps_per_second {print_interval / time_since_last_print:.3f} last_print {time_since_last_print:.3f} done in % {percentage_done:.3f} training_time {time_since_start:.3f}", flush=True)
                     last_print_time = time.time()
 
                     self.writer.add_scalar("Steps/Episode", num_steps, n_epi)
                     self.writer.add_scalar("Steps/SPS", num_steps, print_interval / time_since_last_print)
                     self.writer.add_scalar("Steps/Training_Time",num_steps, time_since_start)
                     self.writer.add_scalar("Steps/Episode_done", num_steps, percentage_done)
+                    
             print("# of episode: {}, avg score: {:.3f} time_since_start: {}".format(
                     n_epi,
                     score,

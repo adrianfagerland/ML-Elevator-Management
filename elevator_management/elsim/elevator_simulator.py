@@ -252,7 +252,7 @@ class ElevatorSimulator:
         total_loss -= (self.total_num_arrivals - self.last_total_num_arrivals) * REWARD_ARRIVE_TARGET
         self.last_total_num_arrivals = self.total_num_arrivals
         # also punish elevator movement
-        return total_loss / LOSS_FACTOR
+        return total_loss
 
     def _ind_loss(self, time_step: float, person_data: Person) -> float:
         """Calculates the loss that an indiviual person contributes to the total loss.
@@ -313,9 +313,9 @@ class ElevatorSimulator:
             person_position = person.arrival
 
         # 
-        ind_reward += (person_position - prev_position) / (person.target - person.arrival) * REWARD_CUMMULATIVE_TO_TARGET
+        #ind_reward += (person_position - prev_position) / (person.target - person.arrival) * REWARD_CUMMULATIVE_TO_TARGET
 
-        return -ind_reward
+        return 0#-ind_reward
 
     def _handle_arrivals_departures(self, next_elevator: Elevator):
         # only let people leave and join if the doors of the elevator are open
@@ -418,13 +418,14 @@ class ElevatorSimulator:
         # if action is defined => execute the actions by sending them to the elevators
         # print a warning from the warning library if max_step_size is higher than the default
         if actions is not None:
-            targets = actions["target"]
-            next_movements = actions["next_move"]
+            assert len(actions) == self.num_elevators
             for i, elevator in enumerate(self.elevators):
-                c_target: int = int(targets[i])
+                elevator_actions = actions[i]
+                c_target: int = int(elevator_actions['target'])
+                next_move = int(elevator_actions['next_move'])
                 # stores if the doors should open because someone is waiting
                 should_doors_open = len(self.floor_queue_list_down[c_target] + self.floor_queue_list_up[c_target]) > 0
-                elevator.set_target_position(c_target, next_movements[i], doors_open=should_doors_open)
+                elevator.set_target_position(c_target, next_move, doors_open=should_doors_open)
 
 
         # find out when next event happens that needs to be handled by decision_algorithm
@@ -453,7 +454,7 @@ class ElevatorSimulator:
 
             return self.get_observations(needs_decision=False)
 
-        if next_arrival < self.world_time + next_elevator_time:
+        if next_arrival <= self.world_time + next_elevator_time:
             # update the time of the simulation and remember how big the interval was # TODO (for the loss function)
             # simulate elevators till person arrives
             for elevator in self.elevators:
@@ -461,6 +462,8 @@ class ElevatorSimulator:
             self.world_time = next_arrival
 
             # person arrives. Add them to the right queues and update the buttons pressed
+            if(len(self.arrivals) == 0):
+                print("ERROR")
             arriving_person = heapq.heappop(self.arrivals)
 
             floor_start = arriving_person.arrival

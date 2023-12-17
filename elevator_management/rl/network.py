@@ -6,7 +6,7 @@ import torch as th
 from gymnasium import spaces
 from ml.scheduler import Scheduler
 from rl.alpha_lstm import script_alpha_lstm
-from rl.feature_extractor import ElevatorFeatureExtractor
+from elevator_management.ml.feature_extractor import ObservationFeatureExtractor
 from torch import nn
 from torch.distributions import Categorical
 
@@ -42,7 +42,7 @@ class ElevatorNetwork(nn.Module):
         assert type(observation_space) == spaces.Dict
         # Elevator Feature Extractor: should be called before trying to analyse the input data
         # Reorders the data and makes it NN friendly
-        self.feature_extractor = ElevatorFeatureExtractor(observation_space, num_floors)
+        self.feature_extractor = ObservationFeatureExtractor(observation_space, num_floors)
 
         self.elevator_data_length = self.feature_extractor.elevator_data_length
         self.group_data_length = self.feature_extractor.group_data_length

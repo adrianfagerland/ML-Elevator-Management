@@ -25,7 +25,7 @@ if(os.path.isdir(log_folder/"elevator_management")):
 
 log_folder = log_folder/"logs"
 
-env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=20)
+env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=100)
 # check_env(env.unwrapped)
 
 trainer = PPO(alphaLSTMNetwork, env, log_folder=log_folder)
