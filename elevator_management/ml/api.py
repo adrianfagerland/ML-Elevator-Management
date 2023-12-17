@@ -42,7 +42,7 @@ class ElevatorEnvironment(gym.Env):
         # To have valid action/observation spaces
         self.reset()
 
-    def reset(self, seed=None, options={}):
+    def reset(self, seed=None, options={"density":1}):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
@@ -64,7 +64,7 @@ class ElevatorEnvironment(gym.Env):
         )
 
         # generate the arrival data or read in trough path, TODO: needs to be changed
-        self.simulator.init_simulation()
+        self.simulator.init_simulation(options['density'])
         # Define observation space
         self.observation_space = spaces.Dict(
             {

@@ -12,7 +12,8 @@ from elsim.parameters import (
     Person,
     REWARD_ARRIVE_TARGET,
     REWARD_CUMMULATIVE_TO_TARGET,
-    REWARD_JOINING_ELEVATOR
+    REWARD_JOINING_ELEVATOR,
+    WAITING_MAX_TIME
 )
 
 
@@ -103,20 +104,25 @@ class ElevatorSimulator:
         self.decay_rate = 0.02  # 1minute ^= 30%
         self.last_observation_call = 0
 
+        # information dict
+        self.num_people_used_stairs: int = 0
+
+
+
     def get_floor_buttons_pressed_up(self):
         return [0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_up]
 
     def get_floor_buttons_pressed_down(self):
         return [0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_down]
 
-    def generate_arrivals_data(self):
+    def generate_arrivals_data(self, density=1):
         """Generates arrival data for people. Stores the arrivals in self.arrivals.
 
         Args:
             path (str): path to the csv file
         """
 
-        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, 1, self.num_arrivals))
+        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, density, self.num_arrivals))
 
         # Check that all specified floors are valid in this building
         assert (
@@ -148,13 +154,13 @@ class ElevatorSimulator:
         self.arrivals = self.original_arrivals.copy()
         heapq.heapify(self.arrivals)
 
-    def init_simulation(self):
+    def init_simulation(self, density):
         """Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
 
         Args:
             path (str): path to the csv file containing the arrival data with the specified format.
         """
-        self.generate_arrivals_data()
+        self.generate_arrivals_data(density)
 
         # start clock for simulation
         self.world_time = 0
@@ -190,7 +196,13 @@ class ElevatorSimulator:
 
         # a dictionary for info, should be used to pass information about the run from
         # then env to an algorithm for logging
-        info_dictionary = {"needs_decision": needs_decision}
+        info_dictionary = { "needs_decision": needs_decision,
+                            "num_walked_stairs": self.num_people_used_stairs,
+                            "num_people_arrived": self.total_num_arrivals,
+                            "num_people_left_in_sim": self.get_number_of_people_in_sim(),
+                            "num_people_yet_to_arrive": len(self.arrivals),
+                            "total_arrivals": len(self.original_arrivals)}
+        
 
         time_dictionary = {
             "time_seconds": np.array([self.world_time], dtype=np.float32),
@@ -308,10 +320,24 @@ class ElevatorSimulator:
     def _handle_arrivals_departures(self, next_elevator: Elevator):
         # only let people leave and join if the doors of the elevator are open
         if next_elevator.get_doors_open() == 1:
+
             # people leave on the floor
             self.total_num_arrivals += next_elevator.passengers_arrive()
+
+
+
             # now find people that want to enter
             arrived_floor = int(next_elevator.get_position())
+
+
+            # check if people have left floor because wait time too long
+            left_queue_up = self.update_wait_queues_too_long_waiting(self.floor_queue_list_up[arrived_floor])
+            left_queue_down = self.update_wait_queues_too_long_waiting(self.floor_queue_list_down[arrived_floor])
+            
+            # keep track of people that used stairs
+            self.num_people_used_stairs += len(left_queue_down) + len(left_queue_up)
+
+
             target_queue_floor = None
             # if elevator has no next_movement set allow either queue to be
             if next_elevator.next_movement == 0:
@@ -342,6 +368,10 @@ class ElevatorSimulator:
             if target_queue_floor is not None:
                 # get possible number of joining people
                 num_possible_join = next_elevator.get_num_possible_join()
+                # update the waiting queue if people have left
+
+                
+
                 # take minimum of possible joins and wanted joins
                 actual_number_of_joins = min(len(target_queue_floor), num_possible_join)
 
@@ -362,16 +392,15 @@ class ElevatorSimulator:
                     new_arrival_time = self.world_time + button_press_again_time
 
                     for person in target_queue_floor:
+                        # set artificial new arrival time
                         person.arrival_time = new_arrival_time
-                        # create artificial arrival
-                        if person in self.arrivals:
-                            # if person is already in the arrivals heap then update the arrival time
-                            heapq.heapify(self.arrivals)
-                        if person not in self.arrivals:
-                            heapq.heappush(self.arrivals, person)
+                        # every person that is waiting must have already arrived
+                        assert person not in self.arrivals
+                        heapq.heappush(self.arrivals, person)
                     
-                    # reset the target_queue_floor as the arrivals are going to fill it up again
-                    target_queue_floor = []
+                    # reset the target_queue_floor as the people inserted into arrivals are no longer 
+                    # waiting (temporarily until they arrive again) 
+                    target_queue_floor[:] = []
 
     def get_number_of_people_in_sim(self):
         """
@@ -383,11 +412,7 @@ class ElevatorSimulator:
         riding_elevator = sum([len(elevator.get_riders()) for elevator in self.elevators])
         return waiting_up + waiting_down + riding_elevator
 
-    # def update_wait_queues_too_long_waiting(self):
-    #     for floor_queue in self.floor_queue_list_down:
-    #         for idx, person in enumerate(floor_queue):
-    #             if self.world_time - person.original_arrival_time > WAITING_MAX_TIME:
-    #                 del floor_queue[idx]
+
 
     def step(self, actions, max_step_size=None) -> tuple:
         # if action is defined => execute the actions by sending them to the elevators
@@ -401,8 +426,6 @@ class ElevatorSimulator:
                 should_doors_open = len(self.floor_queue_list_down[c_target] + self.floor_queue_list_up[c_target]) > 0
                 elevator.set_target_position(c_target, next_movements[i], doors_open=should_doors_open)
 
-        # update people that left because of too long waittime
-        # self.update_wait_queues_too_long_waiting()
 
         # find out when next event happens that needs to be handled by decision_algorithm
         # => either an elevator arrives or a person arrives
@@ -439,6 +462,7 @@ class ElevatorSimulator:
 
             # person arrives. Add them to the right queues and update the buttons pressed
             arriving_person = heapq.heappop(self.arrivals)
+
             floor_start = arriving_person.arrival
             floor_end = arriving_person.target
             if floor_end > floor_start:
@@ -461,3 +485,17 @@ class ElevatorSimulator:
 
         # return the data for the observations
         return self.get_observations()
+
+
+    
+    def update_wait_queues_too_long_waiting(self, floor_queue: list[Person]) -> list[Person]:
+        """
+        Removes people from the wait list if they have waited too long. Returns list of removed people
+        """
+        
+        still_waitingq_ueue = [person for person in floor_queue if not person.used_stairs(self.world_time)]
+        left_queue =  [person for person in floor_queue if person.used_stairs(self.world_time)]
+        floor_queue[:] = still_waitingq_ueue
+        return left_queue
+                
+                

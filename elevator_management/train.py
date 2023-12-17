@@ -1,6 +1,7 @@
 from typing import Type
+import datetime
 
-ĉimport gymnasium as gym
+import gymnasium as gym
 import ml.api  # needs to be imported for the env registration
 import torch as th
 import torch.nn.functional as F
@@ -13,10 +14,20 @@ from rl.network import (
     alphaLSTMNetwork,
 )
 from rl.PPO import PPO
+import os
+from pathlib import Path
 
-env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=600)
+# Create Log Path
+log_folder = Path(os.getcwd())
+# Check if in correct folder (might not be neccessary idk)
+if(os.path.isdir(log_folder/"elevator_management")):
+    log_folder = log_folder/"elevator_management"
+
+log_folder = log_folder/"logs"
+
+env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=20)
 # check_env(env.unwrapped)
 
-trainer = PPO(alphaLSTMNetwork, env)
+trainer = PPO(alphaLSTMNetwork, env, log_folder=log_folder)
 
-trainer.train(save_model="/work/wx350715/elevator_output/model.ml", save_interval=100)
+trainer.train(save_interval=100)
