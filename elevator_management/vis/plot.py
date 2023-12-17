@@ -1,6 +1,6 @@
 import pygame
 
-from elevator_management.vis.visualizer import Visualizer
+from vis.visualizer import Visualizer
 
 # define colors
 WHITE = (255, 255, 255)

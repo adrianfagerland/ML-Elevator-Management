@@ -1,6 +1,6 @@
 import numpy as np
 
-from elevator_management.vis.visualizer import Visualizer
+from vis.visualizer import Visualizer
 
 
 class ConsoleVisualizer(Visualizer):

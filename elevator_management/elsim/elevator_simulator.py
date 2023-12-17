@@ -353,7 +353,7 @@ class ElevatorSimulator:
                     # remove the person from the target queue
                     target_queue_floor.remove(joining_person)
 
-                # remove the people that went onto the elevator
+
 
                 # test if all people could join
                 if len(target_queue_floor) > 0:
@@ -363,15 +363,19 @@ class ElevatorSimulator:
 
                     for person in target_queue_floor:
                         person.arrival_time = new_arrival_time
+                        # create artificial arrival
                         if person in self.arrivals:
                             # if person is already in the arrivals heap then update the arrival time
                             heapq.heapify(self.arrivals)
                         if person not in self.arrivals:
                             heapq.heappush(self.arrivals, person)
+                    
+                    # reset the target_queue_floor as the arrivals are going to fill it up again
+                    target_queue_floor = []
 
     def get_number_of_people_in_sim(self):
         """
-        Finds all the people that are currently in the simulation. Both waiting on a floor or riding in an elevator.
+        Finds the number of people that are currently in the simulation. Both waiting on a floor or riding in an elevator.
         """
         waiting_up = sum([len(queue_list) for queue_list in self.floor_queue_list_up])
         waiting_down = sum([len(queue_list) for queue_list in self.floor_queue_list_down])
