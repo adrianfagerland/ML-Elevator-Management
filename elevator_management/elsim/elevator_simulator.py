@@ -81,7 +81,6 @@ class ElevatorSimulator:
         # People positioning
         self.floor_queue_list_up: list[list[Person]] = [list() for _ in range(self.num_floors)]
         self.floor_queue_list_down: list[list[Person]] = [list() for _ in range(self.num_floors)]
-        self.new_person_arrived_at_floor: list[bool] = [False for _ in range(self.num_floors)]
 
         # Each elevator has a list in which every current passanger is represented by a tuple
         # each tuple consists of (arriving time, entry elevator time, target floor)
@@ -281,31 +280,10 @@ class ElevatorSimulator:
             # now find people that want to enter
             arrived_floor = int(next_elevator.get_position())
             target_queue_floor = None
-            # if elevator has no next_movement set allow either queue to be
-            if next_elevator.get_next_movement() == 0:
-                pass
-                # someone_wants_to_go_up = len(self.floor_queue_list_up[arrived_floor]) > 0
-                # someone_wants_to_go_down = len(self.floor_queue_list_down[arrived_floor]) > 0
-                # if someone_wants_to_go_down and someone_wants_to_go_up:
-                #     # TODO this is confusing for the user, so maybe punish the model if this happens??
-                #     # target queue floor is the one with the minimum [0] value
-                #     target_queue_floor = min(
-                #         [
-                #             self.floor_queue_list_up[arrived_floor],
-                #             self.floor_queue_list_down[arrived_floor],
-                #         ],
-                #         key=lambda x: x[0].original_arrival_time,
-                #     )
-                # elif someone_wants_to_go_down:
-                #     target_queue_floor = self.floor_queue_list_down[arrived_floor]
-                # elif someone_wants_to_go_up:
-                #     target_queue_floor = self.floor_queue_list_up[arrived_floor]
-            else:
-                # next_movement was set, only allow people to join that go in the direction of the elevator
-                if next_elevator.get_next_movement() == 1:
-                    target_queue_floor = self.floor_queue_list_up[arrived_floor]
-                elif next_elevator.get_next_movement() == -1:
-                    target_queue_floor = self.floor_queue_list_down[arrived_floor]
+            if next_elevator.get_next_movement() == 1:
+                target_queue_floor = self.floor_queue_list_up[arrived_floor]
+            elif next_elevator.get_next_movement() == -1:
+                target_queue_floor = self.floor_queue_list_down[arrived_floor]
 
             # if no people are waiting then no one can join
             if target_queue_floor is not None:
@@ -364,7 +342,6 @@ class ElevatorSimulator:
                 elevator.set_target_position(
                     targets[i],
                     next_movements[i],
-                    new_person_arrived_at_floor=self.new_person_arrived_at_floor[int(elevator.get_position())],
                 )
 
         # find out when next event happens that needs to be handled by decision_algorithm
@@ -421,10 +398,8 @@ class ElevatorSimulator:
             floor_end = arriving_person.target
             if floor_end > floor_start:
                 self.floor_queue_list_up[floor_start].append(arriving_person)
-                self.new_person_arrived_at_floor[floor_start] = True
             elif floor_end < floor_start:
                 self.floor_queue_list_down[floor_start].append(arriving_person)
-                self.new_person_arrived_at_floor[floor_start] = True
             else:
                 raise Exception("Wrong person input: Target Floor and Start Floor are equal")
             if not self.arrivals:

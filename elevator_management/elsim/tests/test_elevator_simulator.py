@@ -193,7 +193,7 @@ def test_deep_situation_action1():
         doors_moving_direction_should_be_equal=True,
         elevators_to_check=[1, 0, 1],
     )
-    observation3 = simulator.step({"target": np.array([0, 9, 5]), "next_move": np.array([0, -1, 0])}, 7.1622778)
+    observation3 = simulator.step({"target": np.array([0, 9, 5]), "next_move": np.array([0, -1, 0])})
     _compare_elevator_state_from_observation(
         observation2,
         observation3,
@@ -204,9 +204,7 @@ def test_deep_situation_action1():
         doors_state_should_be_equal=False,
         doors_moving_direction_should_be_equal=True,
     )
-    assert (
-        observation3[0]["elevators"][0]["doors_state"] == 0
-    )  # I (Adrian) think this should be 1 as of 11:07 16/12/2023. Or idk what it should be, but something is fishy lol. TODO settle on this
+    assert observation3[0]["elevators"][1]["doors_state"] == 1
     _compare_elevator_state_from_observation(
         observation2,
         observation3,
@@ -246,14 +244,11 @@ def test_deep_situation_action1():
     )
     assert observation4[2] == False
     # This order is faulty
-    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})
-    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})
-    simulator.step({"target": np.array([2, 0, 6]), "next_move": np.array([-1, 0, -1])})
-    simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
-    simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
-    simulator.step({"target": np.array([2, 0, 0]), "next_move": np.array([-1, 0, 0])})
-    simulator.step({"target": np.array([2, 0, 0]), "next_move": np.array([-1, 0, 0])})
-    simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
+    observation6 = simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})
+    observation7 = simulator.step({"target": np.array([2, 0, 6]), "next_move": np.array([-1, 0, -1])})
+    observation8 = simulator.step({"target": np.array([2, 0, 0]), "next_move": np.array([-1, 0, 0])})
+    observation9 = simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
+    observation10 = simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
     last_observation = simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
     assert simulator.get_number_of_people_in_sim() == 0
     assert last_observation[2] == True
