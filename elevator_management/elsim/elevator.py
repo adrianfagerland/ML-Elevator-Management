@@ -91,7 +91,7 @@ class Elevator:
 
     def __init__(
         self,
-        current_position: float,
+        current_position,
         num_floors: int,
         max_speed: float,
         max_acceleration: float,
@@ -101,7 +101,7 @@ class Elevator:
         self.num_floors = num_floors
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
-        self.target_position: int = int(current_position)
+        self.target_position: int = current_position
         self.max_occupancy = max_occupancy
         self.buttons: list = [0] * num_floors
 
@@ -173,7 +173,6 @@ class Elevator:
             raise Exception(
                 f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}"
             )
-        pass
         if (
             self.target_position != new_target_position
             or (self.trajectory_list[0].next_movement != next_movement and self.target_position != self.get_position())
