@@ -177,7 +177,7 @@ class PPO:
                     # visualizer.visualize(s_prime, a)
                     # time.sleep(1)
                     num_steps += 1
-                    tmp_num_step += 1
+                    tmp_num_steps += 1
 
                     extraced_features_prime = self.model.extract_features(obs_prime)
                     # convert r to float (otherwise ide doesnt understand)
