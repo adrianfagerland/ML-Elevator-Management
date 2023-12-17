@@ -243,7 +243,6 @@ def test_deep_situation_action1():
         elevators_to_check=[1, 0, 1],
     )
     assert observation4[2] == False
-    # This order is faulty
     observation6 = simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})
     observation7 = simulator.step({"target": np.array([2, 0, 6]), "next_move": np.array([-1, 0, -1])})
     observation8 = simulator.step({"target": np.array([2, 0, 0]), "next_move": np.array([-1, 0, 0])})
