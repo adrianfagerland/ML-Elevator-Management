@@ -52,13 +52,23 @@ def _compare_elevator_state_from_observation(
             )
 
 
-def test_get_number_of_people_in_sim():
-    simulator = ElevatorSimulator(num_floors=100, num_elevators=10, num_arrivals=3, random_seed=3012)
+def test_get_number_of_people_in_sim_few():
+    simulator = ElevatorSimulator(num_floors=4, num_elevators=1, num_arrivals=3, random_seed=3012)
     simulator.init_simulation()
     simulator.step(None)
     assert simulator.get_number_of_people_in_sim() == 1
     simulator.step(None)
     assert simulator.get_number_of_people_in_sim() == 2
+    simulator.step(None)
+    assert simulator.get_number_of_people_in_sim() == 3
+    simulator.step(None)
+    assert simulator.get_number_of_people_in_sim() == 3
+
+
+def test_get_number_of_people_in_sim_many():
+    simulator = ElevatorSimulator(num_floors=100, num_elevators=10, num_arrivals=3, random_seed=3012)
+    simulator.init_simulation()
+    # they all arrive at the same time
     simulator.step(None)
     assert simulator.get_number_of_people_in_sim() == 3
 
@@ -183,7 +193,7 @@ def test_deep_situation_action1():
         doors_moving_direction_should_be_equal=True,
         elevators_to_check=[1, 0, 1],
     )
-    observation3 = simulator.step({"target": np.array([0, 9, 5]), "next_move": np.array([0, -1, 0])}, 7.1622778)
+    observation3 = simulator.step({"target": np.array([0, 9, 5]), "next_move": np.array([0, -1, 0])})
     _compare_elevator_state_from_observation(
         observation2,
         observation3,
@@ -194,9 +204,7 @@ def test_deep_situation_action1():
         doors_state_should_be_equal=False,
         doors_moving_direction_should_be_equal=True,
     )
-    assert (
-        observation3[0]["elevators"][0]["doors_state"] == 0
-    )  # I (Adrian) think this should be 1 as of 11:07 16/12/2023. Or idk what it should be, but something is fishy lol. TODO settle on this
+    assert observation3[0]["elevators"][1]["doors_state"] == 1
     _compare_elevator_state_from_observation(
         observation2,
         observation3,
@@ -235,16 +243,11 @@ def test_deep_situation_action1():
         elevators_to_check=[1, 0, 1],
     )
     assert observation4[2] == False
-    # This order seems kinda faulty, idk
-    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})  # ensure closed door on el2
-    simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})  # ensure closed door on el2
-    simulator.step(
-        {"target": np.array([2, 0, 6]), "next_move": np.array([-1, 0, -1])}
-    )  # start going towards people for el1 and el3
-    simulator.step(
-        {"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])}
-    )  # not quite sure why they both arrive at the same time
-    simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
+    observation6 = simulator.step({"target": np.array([0, 0, 5]), "next_move": np.array([0, 0, 0])})
+    observation7 = simulator.step({"target": np.array([2, 0, 6]), "next_move": np.array([-1, 0, -1])})
+    observation8 = simulator.step({"target": np.array([2, 0, 0]), "next_move": np.array([-1, 0, 0])})
+    observation9 = simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
+    observation10 = simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
     last_observation = simulator.step({"target": np.array([0, 0, 0]), "next_move": np.array([0, 0, 0])})
     assert simulator.get_number_of_people_in_sim() == 0
     assert last_observation[2] == True

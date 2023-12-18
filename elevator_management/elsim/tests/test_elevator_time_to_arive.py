@@ -97,24 +97,23 @@ def test_not_full_speed():
 
 
 def test_overshot_speed():
-    test_elevator = Elevator(3.5, 10, 2, 1, current_speed=2)
-    test_elevator.set_target_position(4)
-    assert test_elevator.trajectory_list == [
+    test_elevator1 = Elevator(3.5, 10, 2, 1, current_speed=2)
+    test_elevator1.set_target_position(4)
+    assert test_elevator1.trajectory_list == [
         Elevator.Trajectory(3.5, 2, 0),
         Elevator.Trajectory(5.5, 0.0, 2.0),
         Elevator.Trajectory(4.75, -1.224744871391589, 1.224744871391589),
         Elevator.Trajectory(4.0, 0.0, 1.224744871391589),
     ]
 
-    test_elevator = Elevator(4.5, 10, 2, 1, current_speed=-2)
-    test_elevator.set_target_position(4)
-    assert test_elevator.trajectory_list == [
+    test_elevator2 = Elevator(4.5, 10, 2, 1, current_speed=-2)
+    test_elevator2.set_target_position(4)
+    assert test_elevator2.trajectory_list == [
         Elevator.Trajectory(4.5, -2, 0),
         Elevator.Trajectory(2.5, 0.0, 2.0),
         Elevator.Trajectory(3.25, 1.224744871391589, 1.224744871391589),
         Elevator.Trajectory(4.0, 0.0, 1.224744871391589),
     ]
-    pass
 
 
 def test_arrived_elevator():
