@@ -87,9 +87,10 @@ def train():
 
 
     #### get number of log files in log directory
-    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    current_day = datetime.datetime.now().strftime("%Y%m%d")
+    current_time = datetime.datetime.now().strftime("%H:%M:%S")
     
-    log_dir = log_dir/current_time
+    log_dir = log_dir/current_day/current_time
 
 
     os.makedirs(log_dir, exist_ok=True)
