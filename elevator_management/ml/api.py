@@ -226,6 +226,8 @@ class ElevatorEnvironment(gym.Env):
 
 
 # Register the enviroment
+gym.register(id="Elevator-v0", entry_point="ml.api:ElevatorEnvironment")
+
+
 
 # gymnasium.envs.registration.load_plugin_envs
-gym.register(id="Elevator-v0", entry_point="ml.api:ElevatorEnvironment")
