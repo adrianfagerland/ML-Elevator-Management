@@ -2,8 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from math import sqrt
 
-from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, Person
-from numpy import infty as INFTY
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, Person, INFTY
 from numpy import sign
 from typing_extensions import Self
 
@@ -105,7 +104,7 @@ class Elevator:
         self.max_occupancy = max_occupancy
         self.buttons: list = [0] * num_floors
 
-        self.riders: list[Person] = []
+        self.passengers: list[Person] = []
 
         self.trajectory_list: list[Elevator.Trajectory] = [self.Trajectory(current_position, current_speed, 0)]
 
@@ -116,15 +115,15 @@ class Elevator:
         return self.trajectory_list[0].doors_open_direction
 
     def get_num_passangers(self) -> int:
-        return len(self.riders)
+        return len(self.passengers)
 
-    def get_riders(self) -> list[Person]:
-        return self.riders
+    def get_passengers(self) -> list[Person]:
+        return self.passengers
 
-    def add_rider(self, rider: Person):
+    def add_passenger(self, passenger: Person):
         assert self.get_doors_open() == 1
-        self.riders.append(rider)
-        self.buttons[rider.target] = 1
+        self.passengers.append(passenger)
+        self.buttons[passenger.target_floor] = 1
         self.trajectory_list.insert(
             1, self.trajectory_list[0].copy().set_time(DOOR_STAYING_OPEN_TIME / 2).set_next_movement(0)
         )
@@ -135,25 +134,25 @@ class Elevator:
         """
         return self.get_position() == int(self.get_position()) and self.get_speed() == 0 and self.get_doors_open() == 1
 
-    def passengers_arrive(self) -> int:
+    def passengers_arrive(self) -> list[Person]:
         """
         Handle the arrival of an elevator on a floor. Only does something if the doors are open. 
-        Returns the number of people that left the elevator on that floor
+        Returns a list of People that left on the floor
         """
         # Test if doors are open and therefore people can leave
         if not self.get_doors_open():
-            return 0
+            return []
         
         arrived_floor = int(self.get_position())
 
         # If people want to leave on that floor, remove them from riding list.
-        new_riders = [rider for rider in self.riders if rider.target != arrived_floor]
-        num_people_left = len(self.riders) - len(new_riders) 
-        self.riders = new_riders
+        new_passengers = [passenger for passenger in self.passengers if passenger.target_floor != arrived_floor]
+        left_passengers = [passenger for passenger in self.passengers if passenger.target_floor == arrived_floor]
+        self.passengers = new_passengers
 
         # Served the floor, set button to not pressed
         self.buttons[arrived_floor] = 0
-        return num_people_left
+        return left_passengers
     
     def get_num_possible_join(self):
         return self.max_occupancy - self.get_num_passangers()
@@ -324,10 +323,6 @@ class Elevator:
                         )
         # target position was reached!
         # open doors either if someone is waiting or someone wants to leave
-        # if (not self.is_waiting_for_people() or (len(self.trajectory_list) > 2 and self.is_waiting_for_people())) and (
-        #     self.buttons[int(new_target_position)] == 1
-        #     or ((self.target_position != new_target_position or not self.is_waiting_for_people()))
-        # ):
         if (next_movement != 0) or self.buttons[int(new_target_position)] == 1:
             self.trajectory_list.append(
                 self.trajectory_list[-1]
@@ -436,6 +431,7 @@ class Elevator:
             float: the position in floors
         """
         return self.trajectory_list[0].position
+
 
     def get_speed(self) -> float:
         """Returns the current speed of the elevator
