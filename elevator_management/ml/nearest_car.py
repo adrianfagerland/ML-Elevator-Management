@@ -111,6 +111,8 @@ class NearestCar(Scheduler):
                 elev.next_move = call["direction"]
             else:
                 elev.next_move = 0
+                if sum(elev.buttons_inside) == 0:
+                    elev.target = int(elev.position)
 
     def calc_fs(self, call_direction, call_floor, elevator: Elevator):
         distance = abs(elevator.position - call_floor)

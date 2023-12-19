@@ -28,9 +28,13 @@ class Elevator:
         # if doors_open_direction = 0  => not moving
         # if doors_open_direction = -1 => closing
         doors_open_direction: int = 0
+        next_movement: int = 0
 
         def copy(self) -> Self:
-            return deepcopy(self)
+            copy = deepcopy(self)
+            if not (copy.doors_open == 1 and self.doors_open_direction == 0):
+                copy.next_movement = 0
+            return copy
 
         def set_open(self, open_percentage: float) -> Self:
             self.doors_open = open_percentage
@@ -50,6 +54,10 @@ class Elevator:
 
         def set_doors_opening_direction(self, dir: int) -> Self:
             self.doors_open_direction = dir
+            return self
+
+        def set_next_movement(self, next_movement: int) -> Self:
+            self.next_movement = next_movement
             return self
 
         def get_doors_opening_direction(self) -> int:
@@ -72,9 +80,18 @@ class Elevator:
                 )
             )
 
+        def __init__(
+            self, position: float, speed: float, time: float, doors_open: float = 0, doors_open_direction: int = 0
+        ):
+            self.position = position
+            self.speed = speed
+            self.time = time
+            self.doors_open = doors_open
+            self.doors_open_direction = doors_open_direction
+
     def __init__(
         self,
-        current_position: float,
+        current_position,
         num_floors: int,
         max_speed: float,
         max_acceleration: float,
@@ -84,19 +101,16 @@ class Elevator:
         self.num_floors = num_floors
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
-        self.target_position: int = int(current_position)
+        self.target_position: int = current_position
         self.max_occupancy = max_occupancy
         self.buttons: list = [0] * num_floors
 
         self.riders: list[Person] = []
 
-        # After arriving on target floor, will the elevator continue up (1) or down (-1) or not yet decided (0)?
-        # This is set before arriving, but can be ignored by the next command. This information is
-        # given to the people in queue on the floor, so they may decide whether this elevator is for them
-        # (or maybe for another person going the other direction also waiting on the floor)
-        self.next_movement: int = 0
-
         self.trajectory_list: list[Elevator.Trajectory] = [self.Trajectory(current_position, current_speed, 0)]
+
+    def get_next_movement(self) -> int:
+        return self.trajectory_list[0].next_movement
 
     def get_doors_moving_direction(self) -> int:
         return self.trajectory_list[0].doors_open_direction
@@ -111,6 +125,9 @@ class Elevator:
         assert self.get_doors_open() == 1
         self.riders.append(rider)
         self.buttons[rider.target] = 1
+        self.trajectory_list.insert(
+            1, self.trajectory_list[0].copy().set_time(DOOR_STAYING_OPEN_TIME / 2).set_next_movement(0)
+        )
 
     def is_at_floor(self) -> bool:
         """
@@ -144,7 +161,7 @@ class Elevator:
     def get_buttons(self):
         return self.buttons
 
-    def set_target_position(self, new_target_position: int, next_movement: int = 0, doors_open: bool = False):
+    def set_target_position(self, new_target_position: int, next_movement: int = 0):
         """Set the next target position. Can be done while the elevator is moving (i.e., following a trajectorie).
         Is not going to affect anything if the doors are currently opening as the doors will continue with their plan
         and will ask for a new target if the doors are fully openend.
@@ -162,38 +179,49 @@ class Elevator:
             raise Exception(
                 f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}"
             )
+        if (
+            self.target_position != new_target_position
+            or (self.trajectory_list[0].next_movement != next_movement and self.target_position != self.get_position())
+            or (self.trajectory_list[-1].next_movement != next_movement)
+            or (  # elevator has just become idle
+                self.trajectory_list[0].next_movement == 0
+                and next_movement == 0
+                and self.get_doors_open() == 1
+                and len(self.trajectory_list) == 1
+            )
+        ):
+            self.update_trajectory(new_target_position, next_movement)
 
-        # if the door is currently opening or currently waiting for people, do not update the trajectory i.e. close the door
-        # and move again.
-        # rather open the door fully, people can then enter or exit (if there are people there)
-        # and then set_target_position is called anyway, because a new target is needed
-        if not (self.are_doors_opening() or self.is_waiting_for_people()):
-            self.next_movement = next_movement
-            self.target_position= new_target_position
-            self.update_trajectory(doors_open=doors_open)
-
-    def update_trajectory(self, doors_open: bool):
+    def update_trajectory(self, new_target_position, next_movement):
         """Updates the trajectory if a new target has been set."""
         # Compute trajectory (lots of maths) :@
-        self.trajectory_list = self.trajectory_list[0:1]
+        self.trajectory_list = self.trajectory_list[0 : 2 if self.is_waiting_for_people() else 1]
 
         # check if door needs to be handled, add time to close before starting to move
-        if self.get_doors_open() != DOORS_CLOSED:
-            trajetory_step = (
+        if (
+            self.get_doors_open() != DOORS_CLOSED
+            and (
+                (self.target_position != self.get_position())
+                or (self.trajectory_list[0].next_movement == 0 and not self.is_waiting_for_people())
+                or self.target_position != new_target_position
+            )
+            and not self.are_doors_opening()
+        ):
+            self.trajectory_list.append(
                 self.trajectory_list[0]
                 .copy()
                 .set_open(DOORS_CLOSED)
                 .set_doors_opening_direction(-1)
                 .set_time(self.get_doors_open() * DOOR_OPENING_TIME)
+                .set_next_movement(0)
             )
-            self.trajectory_list.append(trajetory_step)
 
         # while not at correct position and velocity is 0, get new step in trajectory
-        while not (self.trajectory_list[-1].position == self.target_position and self.trajectory_list[-1].speed == 0):
+        while not (self.trajectory_list[-1].position == new_target_position and self.trajectory_list[-1].speed == 0):
             current_pos = self.trajectory_list[-1].position
             current_speed = self.trajectory_list[-1].speed
 
-            dist = self.target_position - current_pos
+            dist = new_target_position - current_pos
 
             if dist * current_speed < 0:
                 # first completely slow down, before reversing
@@ -294,24 +322,30 @@ class Elevator:
                                 time_to_slow_down,
                             )
                         )
-                        pass
         # target position was reached!
         # open doors either if someone is waiting or someone wants to leave
-        if doors_open or self.buttons[int(self.target_position)] == 1:
+        # if (not self.is_waiting_for_people() or (len(self.trajectory_list) > 2 and self.is_waiting_for_people())) and (
+        #     self.buttons[int(new_target_position)] == 1
+        #     or ((self.target_position != new_target_position or not self.is_waiting_for_people()))
+        # ):
+        if (next_movement != 0) or self.buttons[int(new_target_position)] == 1:
             self.trajectory_list.append(
                 self.trajectory_list[-1]
                 .copy()
                 .set_open(DOORS_OPEN)
                 .set_doors_opening_direction(1)
                 .set_time(DOOR_OPENING_TIME)
+                .set_next_movement(0)
             )
             self.trajectory_list.append(
                 self.trajectory_list[-1]
                 .copy()
                 .set_open(DOORS_OPEN)
-                .set_time(DOOR_STAYING_OPEN_TIME)
+                .set_time(DOOR_STAYING_OPEN_TIME / 2)
                 .set_doors_opening_direction(0)
+                .set_next_movement(next_movement)
             )
+        self.target_position = new_target_position
 
     def get_time_to_target(self) -> float:
         """Outputs the time this elevator needs until it arrives at the required target plus the time for opening the door
@@ -324,6 +358,17 @@ class Elevator:
         # elevators that are not yet at their target
         if len(self.trajectory_list) == 1:
             return INFTY
+        # if the elevator is becoming idle in a position, it does not need a decision
+        if (
+            self.trajectory_list[-1].doors_open == 0
+            and self.trajectory_list[-1].doors_open_direction == -1
+            and self.trajectory_list[0].next_movement == 0
+            and self.target_position == self.trajectory_list[-1].position
+        ):
+            return INFTY
+        for i, t in enumerate(self.trajectory_list):
+            if t.next_movement != 0 and t.time > 0:
+                return sum([trajectory_step.time for trajectory_step in self.trajectory_list[: i + 1]])
         return sum([trajectory_step.time for trajectory_step in self.trajectory_list])
 
     def advance_simulation(self, time_step: float) -> bool:
@@ -349,8 +394,6 @@ class Elevator:
             time_step -= self.trajectory_list[i + 1].time
             i += 1
 
-        # elevator is moved to end of its trajectory, set position to target and open the door
-        # (as every end of a trajectory will result in open doors)
         if i + 1 == len(self.trajectory_list):
             self.trajectory_list = [self.trajectory_list[-1].copy().set_time(0)]
             return True
@@ -370,6 +413,7 @@ class Elevator:
         new_pos = last_pos + last_speed * time_step + (new_speed - last_speed) / 2 * time_step
         new_time = next_time - time_step
         new_doors_direction = sign(next_doors - last_doors)
+        new_next_movement = self.trajectory_list[1].next_movement
 
         self.trajectory_list[0] = self.Trajectory(
             new_pos,
@@ -377,7 +421,7 @@ class Elevator:
             0,
             doors_open=new_doors,
             doors_open_direction=new_doors_direction,
-        )
+        ).set_next_movement(new_next_movement)
         self.trajectory_list[1] = (
             self.trajectory_list[1].copy().set_time(new_time).set_doors_opening_direction(new_doors_direction)
         )
@@ -436,10 +480,13 @@ class Elevator:
 
     def is_waiting_for_people(self) -> bool:
         """Test if elevator is currently waiting for someone. I.e. stands still doesnt move and doors are open, but is not idle."""
-        if len(self.trajectory_list) < 2:
-            return False
-        return (
-            self.trajectory_list[0].position == self.trajectory_list[1].position
-            and self.trajectory_list[0].speed == self.trajectory_list[1].speed
-            and self.trajectory_list[0].doors_open == self.trajectory_list[1].doors_open
-        )
+        # if len(self.trajectory_list) < 2:
+        #     return False
+        # return (
+        #     self.trajectory_list[0].position == self.trajectory_list[1].position
+        #     and self.trajectory_list[0].speed == self.trajectory_list[1].speed
+        #     and self.trajectory_list[0].doors_open == self.trajectory_list[1].doors_open
+        #     and self.trajectory_list[1].doors_open_direction == 0
+        #     and self.trajectory_list[1].time > 0
+        # )
+        return self.trajectory_list[0].next_movement != 0
