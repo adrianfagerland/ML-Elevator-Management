@@ -14,13 +14,7 @@ import torch as th
 import torch.nn.functional as F
 import torch.optim as optim
 from gymnasium.utils.env_checker import check_env
-from rl.network import (
-    OUT_HIDDEN_SIZE,
-    PRE_HIDDEN_SIZE,
-    ElevatorNetwork,
-    alphaLSTMNetwork,
-)
-from vis.console import ConsoleVisualizer
+from rl.new_network import SimpleMLP, AlphaNetwork, ActorCritic
 import os
 from pathlib import Path
 import datetime
@@ -30,16 +24,13 @@ def train():
     print("============================================================================================")
 
 
-
+    ################ General hyperparameters ################
     env_name = "Elevator-v0"
     env = gym.make(env_name, num_floors=10, num_elevators=3, num_arrivals=100, observation_type='discrete', action_type='discrete')
     # check_env(env.unwrapped)
-
+    policy_net = AlphaNetwork
 
     max_training_timesteps = int(3e6)   # break training loop if timeteps > max_training_timesteps
-
-    log_freq = 2000           # log avg reward in the interval (in num timesteps)
-    save_model_freq = int(1e5)          # save model frequency (in num timesteps)
 
     #####################################################
 
@@ -56,6 +47,18 @@ def train():
 
     random_seed = 0         # set random seed if required (0 = no random seed)
     #####################################################
+
+
+
+    ################ LOG hyperparameters ################
+    log_freq = 2000           # log avg reward in the interval (in num timesteps)
+    save_model_freq = int(10000)          # save model frequency (in num timesteps)
+    avg_reward_update_per = 0.08
+    #####################################################
+
+
+
+
 
     print("training environment name : " + env_name)
 
@@ -80,11 +83,12 @@ def train():
     log_dir = log_dir/"logs"
 
 
-
     #### get number of log files in log directory
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     
     log_dir = log_dir/current_time
+
+
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
     print("current logging folder:" + str(log_dir))
@@ -124,7 +128,10 @@ def train():
     ################# training procedure ################
 
     # initialize a PPO agent
-    ppo_agent = PPO(state_dim, action_dim, action_view, lr_actor, lr_critic, gamma, K_epochs, eps_clip)
+    # dummy reset to obtain info
+    obs, info = env.reset()
+    #
+    ppo_agent = PPO(policy_net,state_dim, action_dim, action_view, lr_actor, lr_critic, gamma, K_epochs, eps_clip, info)
 
     # track total training time
     start_time = datetime.datetime.now().replace(microsecond=0)
@@ -154,7 +161,7 @@ def train():
         while not done:
 
             # select action with policy
-            action = ppo_agent.select_action(state)
+            action = ppo_agent.select_action(state, info)
             state, reward, done, truncated, info = env.step(action)
 
             reward = float(reward)
@@ -165,26 +172,33 @@ def train():
             time_step +=1
             current_ep_reward += reward
 
+            if time_step % save_model_freq == 0:
+                model_path = log_dir/"time_step"
+                ppo_agent.save(model_path)
+
             # update PPO agent
             if time_step % update_timestep == 0:
+                log_time_start = time()
                 ppo_agent.update()
+                writer.add_scalar("Update/time", time_step, time() - log_time_start)
+                print(f"update num {time_step // update_timestep} in time {time() - log_time_start:.2f}")
 
             # log in logging file
             if time_step % log_freq == 0:
                 current_time = time()
                 sps = log_freq / (current_time - last_time)
                 writer.add_scalar("Steps/SPS", time_step, sps)
-
-                percentage_done = (info['num_people_arrived'] + info["num_walked_stairs"]) / info['total_arrivals'] * 100
-                
-                print(f"steps {time_step} SPS {sps:.2f} train {current_time - start_time_sec:.2f} done% {percentage_done:.2f}")
+                writer.add_scalar("Steps/Time", time_step, current_time - last_time)
+                print(f"Num of steps {time_step}. With  {sps:.2f} Steps per sec and Total Training time {current_time - start_time_sec:.2f}s")
                 last_time = current_time
             # break; if the episode is over
             if done:
                 break
         
-        
-        averaged_ep_reward = current_ep_reward * 0.08 + 0.92 * averaged_ep_reward
+        if(log_running_episodes < 6):
+            averaged_ep_reward = current_ep_reward * 1/2 + 1/2 * averaged_ep_reward
+        else:
+            averaged_ep_reward = current_ep_reward * avg_reward_update_per + (1-avg_reward_update_per) * averaged_ep_reward
         log_running_reward += current_ep_reward
         log_running_episodes += 1
 

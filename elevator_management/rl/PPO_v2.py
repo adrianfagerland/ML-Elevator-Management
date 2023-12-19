@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.distributions import Categorical
+from rl.new_network import ActorCritic, SimpleMLP, AlphaNetwork
 
 ################################## set device ##################################
 print("============================================================================================")
@@ -24,7 +24,8 @@ class RolloutBuffer:
         self.rewards = []
         self.state_values = []
         self.is_terminals = []
-    
+
+
     def clear(self):
         del self.actions[:]
         del self.states[:]
@@ -34,71 +35,19 @@ class RolloutBuffer:
         del self.is_terminals[:]
 
 
-class ActorCritic(nn.Module):
-    def __init__(self, state_dim, action_dim, action_view):
-        super(ActorCritic, self).__init__()
-        self.action_view = action_view
-        # actor
-        self.actor = nn.Sequential(
-                        nn.Linear(state_dim, 64),
-                        nn.Tanh(),
-                        nn.Linear(64, 64),
-                        nn.Tanh(),
-                        nn.Linear(64, action_dim)
-                    )
-        self.actor_softmax = nn.Softmax(dim=-1)
-        # critic
-        self.critic = nn.Sequential(
-                        nn.Linear(state_dim, 64),
-                        nn.Tanh(),
-                        nn.Linear(64, 64),
-                        nn.Tanh(),
-                        nn.Linear(64, 1)
-                    )
-        
-
-    def forward(self):
-        raise NotImplementedError
-    
-    def act(self, state):
-        
-        action_probs = self.actor(state)
-        # if in batch mode, change action_view
-        if(len(state.shape) > 1):
-            action_probs = action_probs.view((-1,) + self.action_view)
-        else:
-            action_probs = action_probs.view(self.action_view)
-
-
-        action_probs = self.actor_softmax(action_probs)
-        dist = Categorical(action_probs)
-
-        action = dist.sample()
-        action_logprob = dist.log_prob(action).sum(dim=-1)
-        state_val = self.critic(state)
-
-        return action.detach(), action_logprob.detach(), state_val.detach()
-    
-    def evaluate(self, state, action):
-        action_probs = self.actor(state)
-        # if in batch mode, change action view
-        if(len(state.shape) > 1):
-            action_probs = action_probs.view((-1,) + self.action_view)
-        else:
-            action_probs = action_probs.view(self.action_view)
-
-        action_probs = self.actor_softmax(action_probs)
-        dist = Categorical(action_probs)
-
-        action_logprobs = dist.log_prob(action).sum(dim=-1)
-        dist_entropy = dist.entropy()
-        state_values = self.critic(state)
-        
-        return action_logprobs, state_values, dist_entropy
-
 
 class PPO:
-    def __init__(self, state_dim, action_dim, action_view, lr_actor, lr_critic, gamma, K_epochs, eps_clip):
+    def __init__(self, 
+                 ac_model,
+                 state_dim: int, 
+                 action_dim, 
+                 action_view, 
+                 lr_actor, 
+                 lr_critic, 
+                 gamma, 
+                 K_epochs, 
+                 eps_clip, 
+                 options={}):
 
 
         self.gamma = gamma
@@ -107,24 +56,24 @@ class PPO:
         
         self.buffer = RolloutBuffer()
 
-        self.policy = ActorCritic(state_dim, action_dim, action_view).to(device)
+        self.policy = ac_model(state_dim, action_dim, action_view, options=options).to(device)
         self.optimizer = torch.optim.Adam([
-                        {'params': self.policy.actor.parameters(), 'lr': lr_actor},
-                        {'params': self.policy.critic.parameters(), 'lr': lr_critic}
+                        {'params': self.policy.actor_parameters(), 'lr': lr_actor},
+                        {'params': self.policy.critic_parameters(), 'lr': lr_critic}
                     ])
 
         self.action_view = action_view
-        self.policy_old = ActorCritic(state_dim, action_dim,action_view).to(device)
+        self.policy_old = ac_model(state_dim, action_dim,action_view, options = options).to(device)
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         self.MseLoss = nn.MSELoss()
 
-    def select_action(self, state):
+    def select_action(self, state, info):
 
 
         with torch.no_grad():
             state = torch.FloatTensor(state).to(device)
-            action, action_logprob, state_val = self.policy_old.act(state)
+            action, action_logprob, state_val = self.policy_old.act(state, info)
         
         self.buffer.states.append(state)
         self.buffer.actions.append(action)
@@ -160,7 +109,7 @@ class PPO:
         for _ in range(self.K_epochs):
 
             # Evaluating old actions and values
-            logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+            logprobs, state_values, _ = self.policy.evaluate(old_states, old_actions)
 
             # match state_values tensor dimensions with rewards tensor
             state_values = torch.squeeze(state_values)

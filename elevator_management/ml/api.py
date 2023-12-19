@@ -204,9 +204,19 @@ class ElevatorEnvironment(gym.Env):
         """
         if(self.observation_type == 'dict'):
             return input
+        
+        # Extract observation and info dict
         observation, *rest_info = input
+        *rest, info = rest_info
+        
+        # modify observation
         extracted_obs = self.observation_feature_extr.extract(observation)
-        return extracted_obs, *rest_info
+        
+        info['max_elevators'] = self.observation_feature_extr.max_num_elevators
+        info['group_info_len'] = self.observation_feature_extr.group_data_length
+        info['elevator_info_len'] = self.observation_feature_extr.elevator_data_length
+
+        return (extracted_obs,) + tuple(rest) + (info,)
 
     def _set_seed(self, seed):
         pass
