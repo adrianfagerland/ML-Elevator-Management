@@ -31,7 +31,7 @@
             "type": "python",
             "request": "launch",
             "module": "rl.training",
-            "justMyCode": false,
+            "justMyCode": true,
             "cwd": "${workspaceFolder}/elevator_management"
         },
         {
