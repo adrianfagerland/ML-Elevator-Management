@@ -6,7 +6,7 @@ import torch as th
 from gymnasium import spaces
 from ml.scheduler import Scheduler
 from rl.alpha_lstm import script_alpha_lstm
-from rl.feature_extractor import ElevatorFeatureExtractor
+from elevator_management.ml.feature_extractor import ObservationFeatureExtractor
 from torch import nn
 from torch.distributions import Categorical
 
@@ -39,33 +39,11 @@ class ElevatorNetwork(nn.Module):
         # dirty hack: we cant assume observation_space to be dict in the type hint as
         # this would throw an error as the return general return type of the env is spaces.Space
 
-        assert type(observation_space) == spaces.Dict
-        # Elevator Feature Extractor: should be called before trying to analyse the input data
-        # Reorders the data and makes it NN friendly
-        self.feature_extractor = ElevatorFeatureExtractor(observation_space, num_floors)
-
-        self.elevator_data_length = self.feature_extractor.elevator_data_length
-        self.group_data_length = self.feature_extractor.group_data_length
 
         self.elevator_input_size = self.group_data_length + self.elevator_data_length
 
-    def extract_features(self, features: th.Tensor) -> th.Tensor:
-        return self.feature_extractor.extract(features)
 
-    def split_features(self, features: th.Tensor):
-        group_info = features[: self.group_data_length]
-        num_elevators = int((features.size(dim=0) - self.group_data_length) / self.elevator_data_length)
-        for ele_idx in range(num_elevators):
-            split_features = th.zeros(self.elevator_input_size)
-            split_features[: self.group_data_length] = group_info
-            feature_tensor = features[
-                self.group_data_length
-                + ele_idx * self.elevator_data_length : self.group_data_length
-                + (ele_idx + 1) * self.elevator_data_length
-            ]
 
-            split_features[self.group_data_length :] = feature_tensor
-            yield ele_idx, split_features
 
     def sample_action_from_output(self, prob):
         # Sample action from output

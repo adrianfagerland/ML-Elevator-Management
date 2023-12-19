@@ -11,4 +11,4 @@
 #SBATCH --ntasks=1
 module load Python/3.10.4
 
-python /home/wx350715/projects/ML-Elevator-Management/elevator_management/test.py
+python /home/wx350715/projects/ML-Elevator-Management/elevator_management/train.py

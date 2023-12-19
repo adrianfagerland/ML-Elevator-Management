@@ -83,10 +83,10 @@ class NearestCar(Scheduler):
         # calculate for every call which elevator will serve it
         self.evaluate_calls(calls)
 
-        return {
-            "target": [e.target for e in self.elevators],
-            "next_move": [e.next_move for e in self.elevators],
-        }
+        output = []
+        for e in self.elevators:
+            output.append({'target':e.target, 'next_move': e.next_move})
+        return tuple(output)
 
     def evaluate_calls(self, calls):
         busy_elevators = {}

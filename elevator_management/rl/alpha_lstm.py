@@ -72,12 +72,12 @@ class Alpha_LSTMLayer(nn.Module):
     def forward(
         self, input: Tensor, state: Tuple[Tensor, Tensor], alpha: float = 1.0
     ) -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
-        inputs = input.unbind(0)
         outputs = torch.jit.annotate(List[Tensor], [])
-        for i in range(len(inputs)):
-            out, state = self.cell(inputs[i], state, alpha)
+        seq_length = input.shape[1]
+        for i in range(seq_length):
+            out, state = self.cell(input[:,i,:], state, alpha)
             outputs += [out]
-        return torch.stack(outputs), state
+        return torch.stack(outputs, dim=1), state
 
 
 def init_stacked_lstm(num_layers, layer, first_layer_args, other_layer_args):
@@ -102,13 +102,10 @@ class AlphaStackedLSTM(nn.Module):
         output_states_h = jit.annotate(List[Tensor], [])
         output_states_c = jit.annotate(List[Tensor], [])
         output = input
-
-        i = 0
-        for rnn_layer in self.layers:
-            state = states[i]
-            state = (state[0].unsqueeze(0), state[1].unsqueeze(0))
+        
+        for idx, rnn_layer in enumerate(self.layers):
+            state = (states[0][idx], states[1][idx])
             output, out_state = rnn_layer(output, state, alpha)
-            output_states_h += [out_state[0].squeeze()]
-            output_states_c += [out_state[1].squeeze()]
-            i += 1
-        return output, (torch.stack(output_states_h), torch.stack(output_states_c))
+            output_states_h += [out_state[0]]
+            output_states_c += [out_state[1]]
+        return output, (torch.stack(output_states_h, dim=0), torch.stack(output_states_c, dim=0))
