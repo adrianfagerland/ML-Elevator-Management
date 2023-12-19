@@ -403,7 +403,7 @@ class ElevatorSimulator:
                 elevator_decision = actions[i]
                 elevator.set_target_position(
                     elevator_decision['target'],
-                    elevator_decision['next_movement'],
+                    elevator_decision['next_move'],
                 )
 
         # find out when next event happens that needs to be handled by decision_algorithm
