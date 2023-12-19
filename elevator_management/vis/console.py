@@ -49,9 +49,9 @@ class ConsoleVisualizer(Visualizer):
                         print_str += "\to"
                         if previous_action is None:
                             continue
-                        if previous_action["next_move"][e_it] == 1:
+                        if previous_action[e_it]["next_move"] == 1:
                             print_str += "^"
-                        elif previous_action["next_move"][e_it] == -1:
+                        elif previous_action[e_it]["next_move"] == -1:
                             print_str += "v"
                     elif doors_moving_direction[e_it] == -1:
                         print_str += f"    {' '*(e_it == 0)}  >o<"

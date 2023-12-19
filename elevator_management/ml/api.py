@@ -184,7 +184,7 @@ class ElevatorEnvironment(gym.Env):
         else:
             # modify action list to dictionary if not correctly passed as parameter
             
-            if(self.action_type is dict):
+            if(self.action_type == 'dict'):
                 assert isinstance(action, tuple)
                 action_dict = action
             else:

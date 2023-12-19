@@ -400,9 +400,10 @@ class ElevatorSimulator:
         if actions is not None:
             assert len(actions) == self.num_elevators
             for i, elevator in enumerate(self.elevators):
+                elevator_decision = actions[i]
                 elevator.set_target_position(
-                    targets[i],
-                    next_movements[i],
+                    elevator_decision['target'],
+                    elevator_decision['next_move'],
                 )
 
         # find out when next event happens that needs to be handled by decision_algorithm
