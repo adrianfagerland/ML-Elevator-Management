@@ -29,7 +29,7 @@ def train():
 
     ################ General hyperparameters ################
     env_name = "Elevator-v0"
-    env = gym.make(env_name, num_floors=10, num_elevators=3, num_arrivals=100, observation_type='discrete', action_type='discrete')
+    env = gym.make(env_name, num_floors=10, num_elevators=3, num_arrivals=150, observation_type='discrete', action_type='discrete')
     # check_env(env.unwrapped)
     policy_net = AlphaNetwork
 
@@ -54,8 +54,8 @@ def train():
 
 
     ################ LOG hyperparameters ################
-    log_freq = 500           # log avg reward in the interval (in num timesteps)
-    save_model_freq = int(1000)          # save model frequency (in num timesteps)
+    log_freq = 2000           # log avg reward in the interval (in num timesteps)
+    save_model_freq = int(10000)          # save model frequency (in num timesteps)
     avg_reward_update_per = 0.08
     #####################################################
 

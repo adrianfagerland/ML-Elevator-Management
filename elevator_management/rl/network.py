@@ -6,7 +6,7 @@ import torch as th
 from gymnasium import spaces
 from ml.scheduler import Scheduler
 from rl.alpha_lstm import script_alpha_lstm
-from elevator_management.ml.feature_extractor import ObservationFeatureExtractor
+from ml.feature_extractor import ObservationFeatureExtractor
 from torch import nn
 from torch.distributions import Categorical
 
