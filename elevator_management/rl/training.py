@@ -55,7 +55,7 @@ def train():
 
     ################ LOG hyperparameters ################
     log_freq = 500           # log avg reward in the interval (in num timesteps)
-    save_model_freq = int(10000)          # save model frequency (in num timesteps)
+    save_model_freq = int(1000)          # save model frequency (in num timesteps)
     avg_reward_update_per = 0.08
     #####################################################
 
@@ -87,8 +87,8 @@ def train():
 
 
     #### get number of log files in log directory
-    current_day = datetime.datetime.now().strftime("%Y%m%d")
-    current_time = datetime.datetime.now().strftime("%H:%M:%S")
+    current_day = datetime.datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.datetime.now().strftime("%H-%M-%S")
     
     log_dir = log_dir/current_day/current_time
 
@@ -177,7 +177,8 @@ def train():
             current_ep_reward += reward
 
             if time_step % save_model_freq == 0:
-                model_path = log_dir/"time_step"
+                model_path = log_dir/("checkpoint_model-" + str(time_step) + ".ml")
+                #writer.add_graph(ppo_agent.policy_old)
                 ppo_agent.save(model_path)
 
             # update PPO agent
