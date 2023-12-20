@@ -100,6 +100,7 @@ class ElevatorSimulator:
         self.num_people_used_stairs: int = 0
 
         self.last_observation_call = 0
+        self.world_time: float = 0
 
     def get_floor_buttons_pressed_up(self):
         return [0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_up]
