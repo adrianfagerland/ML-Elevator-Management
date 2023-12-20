@@ -18,11 +18,7 @@ from torch import nn
 
 
 class ObservationFeatureExtractor:
-    def __init__(self, 
-                 observation_space: spaces.Dict, 
-                 num_floors: int,
-                 max_elevators: int):
-        
+    def __init__(self, observation_space: spaces.Dict, num_floors: int, max_elevators: int):
         self._observation_space: spaces.Dict = observation_space
         self.num_floors = num_floors
 
@@ -54,12 +50,13 @@ class ObservationFeatureExtractor:
 
         for key in elevator_observation_space:
             self.elevator_data_length += self.flatdim_from_obs_space(elevator_observation_space[key])
-        
+
         # Generate empty tensor
-        self.data_out_length = self.max_num_elevators + self.group_data_length + self.max_num_elevators * self.elevator_data_length
+        self.data_out_length = (
+            self.max_num_elevators + self.group_data_length + self.max_num_elevators * self.elevator_data_length
+        )
 
-        self.return_observation_space = spaces.Box(low=-1, high=1,shape=(self.data_out_length,))
-
+        self.return_observation_space = spaces.Box(low=-1, high=1, shape=(self.data_out_length,))
 
     def flatdim_from_obs_space(self, space: spaces.Space) -> int:
         if isinstance(space, spaces.MultiDiscrete):
@@ -88,17 +85,18 @@ class ObservationFeatureExtractor:
             return observation.flatten()
 
     def extract(self, observations) -> th.Tensor:
-
         out_tensor = np.zeros((self.data_out_length), dtype=np.float32)
         # Fill beginning with number of ones that correspond to the number of active elevators
-        num_active_elevators = len(observations['elevators'])
+        num_active_elevators = len(observations["elevators"])
         num_inactive_elevators = self.max_num_elevators - num_active_elevators
-        out_tensor[0:self.max_num_elevators] = np.concatenate((np.ones(num_active_elevators), np.zeros(num_inactive_elevators)))
-        
+        out_tensor[0 : self.max_num_elevators] = np.concatenate(
+            (np.ones(num_active_elevators), np.zeros(num_inactive_elevators))
+        )
+
         # start filling the tensor up sequentially
         current_idx = self.max_num_elevators
         last_idx = self.max_num_elevators
-        
+
         # Start with group information
         for key in self.group_keywords:
             current_idx += self.flatdim_from_obs_space(self._observation_space[key])
@@ -120,11 +118,7 @@ class ObservationFeatureExtractor:
 
 
 class ActionFeatureExtractor:
-    def __init__(self, 
-                 action_space: spaces.Sequence, 
-                 num_floors: int,
-                 max_elevators: int):
-        
+    def __init__(self, action_space: spaces.Sequence, num_floors: int, max_elevators: int):
         self._action_space = action_space
         self.num_floors = num_floors
 
@@ -141,11 +135,11 @@ class ActionFeatureExtractor:
 
         self.elevator_action_length = 1
         elevator_action_space = self._action_space.feature_space
-        
-        assert isinstance(elevator_action_space,spaces.Dict)
+
+        assert isinstance(elevator_action_space, spaces.Dict)
         for key in self.elevator_keywords:
             self.elevator_action_length *= self.flatdim_from_obs_space(elevator_action_space[key])
-        
+
         # Generate empty tensor
         self.data_out_view = [self.elevator_action_length] * self.max_num_elevators
 
@@ -163,13 +157,12 @@ class ActionFeatureExtractor:
         else:
             return flatdim(space)
 
-
     def extract(self, action: th.Tensor) -> tuple:
         num_elevators = len(action)
         output = []
         for elevator_action in action:
             target = elevator_action % self.num_floors
             next_move = (elevator_action // self.num_floors) - 1
-            output.append({'target':target, 'next_move':next_move})
+            output.append({"target": target, "next_move": next_move})
 
         return tuple(output)

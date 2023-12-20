@@ -85,7 +85,7 @@ class NearestCar(Scheduler):
 
         output = []
         for e in self.elevators:
-            output.append({'target':e.target, 'next_move': e.next_move})
+            output.append({"target": e.target, "next_move": e.next_move})
         return tuple(output)
 
     def evaluate_calls(self, calls):

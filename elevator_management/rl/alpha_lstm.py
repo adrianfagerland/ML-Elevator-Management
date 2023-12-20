@@ -75,7 +75,7 @@ class Alpha_LSTMLayer(nn.Module):
         outputs = torch.jit.annotate(List[Tensor], [])
         seq_length = input.shape[1]
         for i in range(seq_length):
-            out, state = self.cell(input[:,i,:], state, alpha)
+            out, state = self.cell(input[:, i, :], state, alpha)
             outputs += [out]
         return torch.stack(outputs, dim=1), state
 
@@ -102,7 +102,7 @@ class AlphaStackedLSTM(nn.Module):
         output_states_h = jit.annotate(List[Tensor], [])
         output_states_c = jit.annotate(List[Tensor], [])
         output = input
-        
+
         for idx, rnn_layer in enumerate(self.layers):
             state = (states[0][idx], states[1][idx])
             output, out_state = rnn_layer(output, state, alpha)

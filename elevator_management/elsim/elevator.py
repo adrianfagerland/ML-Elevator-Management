@@ -136,13 +136,13 @@ class Elevator:
 
     def passengers_arrive(self) -> list[Person]:
         """
-        Handle the arrival of an elevator on a floor. Only does something if the doors are open. 
+        Handle the arrival of an elevator on a floor. Only does something if the doors are open.
         Returns a list of People that left on the floor
         """
         # Test if doors are open and therefore people can leave
         if not self.get_doors_open():
             return []
-        
+
         arrived_floor = int(self.get_position())
 
         # If people want to leave on that floor, remove them from riding list.
@@ -153,7 +153,7 @@ class Elevator:
         # Served the floor, set button to not pressed
         self.buttons[arrived_floor] = 0
         return left_passengers
-    
+
     def get_num_possible_join(self):
         return self.max_occupancy - self.get_num_passangers()
 
@@ -431,7 +431,6 @@ class Elevator:
             float: the position in floors
         """
         return self.trajectory_list[0].position
-
 
     def get_speed(self) -> float:
         """Returns the current speed of the elevator

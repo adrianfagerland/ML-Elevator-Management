@@ -20,10 +20,10 @@ from pathlib import Path
 # Create Log Path
 log_folder = Path(os.getcwd())
 # Check if in correct folder (might not be neccessary idk)
-if(os.path.isdir(log_folder/"elevator_management")):
-    log_folder = log_folder/"elevator_management"
+if os.path.isdir(log_folder / "elevator_management"):
+    log_folder = log_folder / "elevator_management"
 
-log_folder = log_folder/"logs"
+log_folder = log_folder / "logs"
 
 env = gym.make("Elevator-v0", num_floors=10, num_elevators=3, num_arrivals=100)
 # check_env(env.unwrapped)

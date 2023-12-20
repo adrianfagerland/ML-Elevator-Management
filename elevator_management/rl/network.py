@@ -39,11 +39,7 @@ class ElevatorNetwork(nn.Module):
         # dirty hack: we cant assume observation_space to be dict in the type hint as
         # this would throw an error as the return general return type of the env is spaces.Space
 
-
         self.elevator_input_size = self.group_data_length + self.elevator_data_length
-
-
-
 
     def sample_action_from_output(self, prob):
         # Sample action from output

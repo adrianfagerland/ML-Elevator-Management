@@ -14,6 +14,6 @@ class RandomScheduler(Scheduler):
 
         output = []
         for i in range(self.num_elevators):
-            output.append({"target":targets[i], "next_move": random.randint(-1,1)})
+            output.append({"target": targets[i], "next_move": random.randint(-1, 1)})
 
         return tuple(output)

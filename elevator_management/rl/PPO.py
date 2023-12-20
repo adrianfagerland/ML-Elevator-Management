@@ -20,6 +20,7 @@ import os
 from pathlib import Path
 import datetime
 from torch.utils.tensorboard.writer import SummaryWriter
+
 # Hyperparameters
 learning_rate = 0.0005
 gamma = 0.98
@@ -43,10 +44,9 @@ class PPO:
         # store the enviromnent to train the network on
         self.env = env
 
-        
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        
-        self.log_folder = log_folder/current_time
+
+        self.log_folder = log_folder / current_time
         os.makedirs(self.log_folder, exist_ok=True)
         self.writer = SummaryWriter(log_dir=self.log_folder)
 
@@ -67,12 +67,11 @@ class PPO:
         self.data.append(transition)
 
     def make_batch(self):
-        
         extracted_state_list, extracted_state_prime_list = [], []
         action_list, reward_list, prob_action_list = [], [], []
-        
+
         hidden_inf_in_list, hidden_inf_out_list, done_list = [], [], []
-        
+
         for transition in self.data:
             fs, a, r, fs_prime, prob_a, h_in, h_out, done = transition
 
@@ -96,7 +95,6 @@ class PPO:
         fs_prime = th.stack(extracted_state_prime_list)
         fs_prime.requires_grad = True
         return fs, a, r, fs_prime, done_mask, log_prob_a, hidden_inf_in_list[0], hidden_inf_out_list[0]
-
 
     def update_parameters(self):
         states, actions, reward, states_prime, done_mask, log_prob_a, hidden_in_0, hidden_out_0 = self.make_batch()
@@ -148,17 +146,17 @@ class PPO:
         MAX_DENSITY = 3
         return MIN_DENSITY + n_episode / total_episodes * (MAX_DENSITY - MIN_DENSITY)
 
-    def train(self, episode_length=40_000, print_interval = 100, save_interval=None):
+    def train(self, episode_length=40_000, print_interval=100, save_interval=None):
         score = 0.0
         print_interval = print_interval
         print("Start training!", flush=True)
-        
+
         start_time = time.time()
         num_steps = 0
         tmp_num_steps = 0
         for n_epi in range(episode_length):
             # Reset with increasing density
-            obs, info = self.env.reset(options={'density': self.calculate_density(n_epi, episode_length)})  
+            obs, info = self.env.reset(options={"density": self.calculate_density(n_epi, episode_length)})
             last_print_time = time.time()
 
             done = False
@@ -182,7 +180,18 @@ class PPO:
                     # convert r to float (otherwise ide doesnt understand)
                     reward = float(reward)
 
-                    self.put_data((extracted_features,action,reward,extraced_features_prime,log_prob_a,hidden_inf_in,hidden_inf_out,done))
+                    self.put_data(
+                        (
+                            extracted_features,
+                            action,
+                            reward,
+                            extraced_features_prime,
+                            log_prob_a,
+                            hidden_inf_in,
+                            hidden_inf_out,
+                            done,
+                        )
+                    )
                     obs = obs_prime
 
                     score += reward
@@ -190,34 +199,39 @@ class PPO:
                         break
 
                 self.update_parameters()
-                
-                if(tmp_num_steps > print_interval):
+
+                if tmp_num_steps > print_interval:
                     tmp_num_steps -= print_interval
                     time_since_start = time.time() - start_time
                     time_since_last_print = time.time() - last_print_time
-                    percentage_done = (info['num_people_arrived'] + info["num_walked_stairs"]) / info['total_arrivals'] * 100
+                    percentage_done = (
+                        (info["num_people_arrived"] + info["num_walked_stairs"]) / info["total_arrivals"] * 100
+                    )
 
-                    print(f"#epoch {n_epi} #steps performed:{num_steps} #steps_per_second {print_interval / time_since_last_print:.3f} last_print {time_since_last_print:.3f} done in % {percentage_done:.3f} training_time {time_since_start:.3f}", flush=True)
+                    print(
+                        f"#epoch {n_epi} #steps performed:{num_steps} #steps_per_second {print_interval / time_since_last_print:.3f} last_print {time_since_last_print:.3f} done in % {percentage_done:.3f} training_time {time_since_start:.3f}",
+                        flush=True,
+                    )
                     last_print_time = time.time()
 
                     self.writer.add_scalar("Steps/Episode", num_steps, n_epi)
                     self.writer.add_scalar("Steps/SPS", num_steps, print_interval / time_since_last_print)
-                    self.writer.add_scalar("Steps/Training_Time",num_steps, time_since_start)
+                    self.writer.add_scalar("Steps/Training_Time", num_steps, time_since_start)
                     self.writer.add_scalar("Steps/Episode_done", num_steps, percentage_done)
-                    
-            print("# of episode: {}, avg score: {:.3f} time_since_start: {}".format(
+
+            print(
+                "# of episode: {}, avg score: {:.3f} time_since_start: {}".format(
                     n_epi,
                     score,
                     round(time.time() - start_time, 2),
                 ),
                 flush=True,
             )
-            
-            self.writer.add_scalar("Train/Episode_Reward", n_epi, score)
-            self.writer.add_scalar("Train/Episode_Walked",n_epi, info['num_walked_stairs'])
-            self.writer.add_scalar("Train/Episode_Arrived",n_epi, info['num_people_arrived'])
-            self.writer.add_scalar("Train/Episode_Steps",n_epi, num_steps)
-            score = 0.0
 
+            self.writer.add_scalar("Train/Episode_Reward", n_epi, score)
+            self.writer.add_scalar("Train/Episode_Walked", n_epi, info["num_walked_stairs"])
+            self.writer.add_scalar("Train/Episode_Arrived", n_epi, info["num_people_arrived"])
+            self.writer.add_scalar("Train/Episode_Steps", n_epi, num_steps)
+            score = 0.0
 
         self.env.close()
