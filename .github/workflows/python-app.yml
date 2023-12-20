@@ -31,8 +31,7 @@ jobs:
         poetry install
     - name: Lint with Black
       run: |
-        poetry shell
-        python -m black . --line-length 120 --check
+        poetry run black . --line-length 120 --check
     - name: Test with pytest
       run: |
         pytest
