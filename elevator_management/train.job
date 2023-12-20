@@ -1,15 +1,24 @@
+
 #!/usr/bin/zsh
 #SBATCH --mem-per-cpu=2048M
-#SBATCH --job-name=elevator_ppo
+#SBATCH --job-name=elevator_3
 
-#SBATCH --output=/work/wx350715/elevator_output/elevator_alpha.err
-#SBATCH --error=/work/wx350715/elevator_output/elevator_alpha.err
+#SBATCH --output=/work/wx350715/elevator_output/elevator_elevator_3.err
+#SBATCH --error=/work/wx350715/elevator_output/elevator_elevator_3.err
 
 
-#SBATCH --time=2:00:00
+#SBATCH --time=7:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
+
+
+export CONDA_ROOT=$HOME/miniconda3
+source $CONDA_ROOT/etc/profile.d/conda.sh
+export PATH="$CONDA_ROOT/bin:$PATH"
 module load Python/3.10.4
+conda activate elevator
+
 
 cd /home/wx350715/projects/ML-Elevator-Management/elevator_management
 python -m rl.training
+

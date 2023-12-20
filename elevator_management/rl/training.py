@@ -5,7 +5,7 @@ import numpy as np
 
 import gymnasium as gym
 
-from rl.PPO_v2 import PPO
+from elevator_management.rl.PPO import PPO
 import os
 # disable tf warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = "3"
@@ -17,7 +17,7 @@ import torch as th
 import torch.nn.functional as F
 import torch.optim as optim
 from gymnasium.utils.env_checker import check_env
-from rl.new_network import SimpleMLP, AlphaNetwork, ActorCritic
+from rl.network import SimpleMLP, AlphaNetwork, ActorCritic
 import os
 from pathlib import Path
 import datetime

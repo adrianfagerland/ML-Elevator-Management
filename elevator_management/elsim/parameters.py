@@ -11,7 +11,7 @@ WAITING_MAX_TIME = 4 * 60  # after 4min a person decides to walk instead of furt
 ## Reward parameters
 REWARD_JOINING_ELEVATOR = 0.2
 REWARD_ARRIVE_TARGET = 1
-REWARD_OVERTIME_PENALTY_EXP = 2.5 # the higher the more overtime is penalized
+REWARD_OVERTIME_PENALTY_EXP = 2.5 # the higher the less overtime is penalized
 REWARD_FORGOT_PEOPLE = -100
 REWARD_NORMALIZER = 1
 
@@ -44,7 +44,7 @@ class Person:
     
     
     def __eq__(self, other: 'Person'):
-        """ Need to implement an equal function as dataclasses are compared for values. """
+        """ Need to implement an equal function as dataclasses are compared for values. Caused bugs in 'x in self.arrivals' """
         return id(self) == id(other)
 
     ## Make person hashable
@@ -54,10 +54,10 @@ class Person:
         self.time_left_simulation = world_time
         self.has_arrived = True
         # time that is acceptable depending on the travel distance, if used_time is higher penalize reward
-        acceptable_time = 10 + abs(self.arrival_floor - self. target_floor) * 3 
+        acceptable_time = 13 + abs(self.arrival_floor - self. target_floor) * 5 
         travel_time = self.time_left_simulation - self.original_arrival_time
 
-        return REWARD_ARRIVE_TARGET * 1 / max(1, travel_time - acceptable_time)**REWARD_OVERTIME_PENALTY_EXP
+        return REWARD_ARRIVE_TARGET * 1 / max(1, travel_time - acceptable_time)**(1/REWARD_OVERTIME_PENALTY_EXP)
     
     def get_walk_reward(self, world_time):
         """ Returns the (negative) reward for punishing the elevator if a person walked.
