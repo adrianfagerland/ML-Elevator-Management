@@ -2,7 +2,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from math import sqrt
 
-from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, Person, INFTY
+import numpy as np
+from elsim.parameters import DOOR_OPENING_TIME, DOOR_STAYING_OPEN_TIME, INFTY, Person
 from numpy import sign
 from typing_extensions import Self
 
@@ -174,6 +175,8 @@ class Elevator:
         Raises:
             Exception: If floor number is not valid.
         """
+        if isinstance(new_target_position, np.ndarray):
+            new_target_position = new_target_position[0]
         if self.num_floors <= new_target_position or new_target_position < 0:
             raise Exception(
                 f"New Target Floor {new_target_position} is not in the right range of 0 to {self.num_floors}"
@@ -322,7 +325,6 @@ class Elevator:
                             )
                         )
         # target position was reached!
-        # open doors either if someone is waiting or someone wants to leave
         if (next_movement != 0) or self.buttons[int(new_target_position)] == 1:
             self.trajectory_list.append(
                 self.trajectory_list[-1]
