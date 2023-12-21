@@ -289,7 +289,7 @@ class Elevator:
                         self.trajectory_list.append(
                             self.Trajectory(
                                 current_pos + distance_slow_down,
-                                current_speed - sgn_factor * self.max_acceleration * time_to_slow_down,
+                                0,
                                 time_to_slow_down,
                             )
                         )
