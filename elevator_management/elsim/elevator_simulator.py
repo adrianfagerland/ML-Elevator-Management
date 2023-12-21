@@ -28,9 +28,7 @@ class ElevatorSimulator:
         speed_elevator: float = 2.0,
         acceleration_elevator: float = 0.4,
         max_elevator_occupancy: int = 7,
-        random_seed: float = 0,
         num_arrivals: int = 2000,
-        random_elevator_init: bool = True,
     ):
         """Initialises the Elevator Simulation.
 
@@ -50,37 +48,22 @@ class ElevatorSimulator:
         self.max_speed = speed_elevator
         self.max_acc = acceleration_elevator
         self.max_elevator_occupancy = max_elevator_occupancy
-        self.random_init = random_elevator_init
         self.done = False
 
         self.num_arrivals = num_arrivals
-        self.r = Random(random_seed)
 
         self.total_num_arrivals: int = 0
 
-        # Init Elevators
-        if self.random_init:
-            self.elevators = [
-                Elevator(
-                    self.r.randint(0, self.num_floors - 1),
-                    self.num_floors,
-                    self.max_speed,
-                    self.max_acc,
-                    max_occupancy=max_elevator_occupancy,
-                )
-                for _ in range(self.num_elevators)
-            ]
-        else:
-            self.elevators = [
-                Elevator(
-                    0,
-                    self.num_floors,
-                    self.max_speed,
-                    self.max_acc,
-                    max_occupancy=max_elevator_occupancy,
-                )
-                for _ in range(self.num_elevators)
-            ]
+        self.elevators = [
+            Elevator(
+                0,
+                self.num_floors,
+                self.max_speed,
+                self.max_acc,
+                max_occupancy=max_elevator_occupancy,
+            )
+            for _ in range(self.num_elevators)
+        ]
 
         # People positioning
         self.floor_queue_list_up: list[list[Person]] = [list() for _ in range(self.num_floors)]
@@ -152,12 +135,23 @@ class ElevatorSimulator:
         self.arrivals = self.original_arrivals.copy()
         heapq.heapify(self.arrivals)
 
-    def init_simulation(self, seed, density):
+    def init_simulation(self, seed, density, random_elevator_init=True):
         """Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
 
         Args:
             path (str): path to the csv file containing the arrival data with the specified format.
         """
+        self.r = Random(seed)
+        self.elevators = [
+            Elevator(
+                self.r.randint(0, self.num_floors - 1) if random_elevator_init else 0,
+                self.num_floors,
+                self.max_speed,
+                self.max_acc,
+                max_occupancy=self.max_elevator_occupancy,
+            )
+            for _ in range(self.num_elevators)
+        ]
         self.generate_arrivals_data(seed, density)
 
         # start clock for simulation
