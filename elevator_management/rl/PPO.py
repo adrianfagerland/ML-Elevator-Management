@@ -81,7 +81,13 @@ class PPO:
 
         return action.detach().numpy()
 
-    def update(self):
+    def update(self, buffer_length):
+        # if not enough done => do not update
+        buffer_actual_length = len(self.buffer.actions)
+        percentage_filled_up = buffer_actual_length / buffer_length
+        if(percentage_filled_up < 0.1):
+            self.buffer.clear()
+            return
         # Monte Carlo estimate of returns
         rewards = []
         discounted_reward = 0
@@ -105,7 +111,7 @@ class PPO:
         advantages = rewards.detach() - old_state_values.detach()
 
         # Optimize policy for K epochs
-        for _ in range(self.K_epochs):
+        for _ in range(int(self.K_epochs * percentage_filled_up)):
 
             # Evaluating old actions and values
             logprobs, state_values, _ = self.policy.evaluate(old_states, old_actions)
@@ -131,7 +137,7 @@ class PPO:
         # Copy new weights into old policy
         self.policy_old.load_state_dict(self.policy.state_dict())
 
-        # clear buffer
+
         self.buffer.clear()
     
     def save(self, checkpoint_path):

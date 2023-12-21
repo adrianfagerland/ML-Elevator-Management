@@ -12,7 +12,8 @@ from elsim.parameters import (
     REWARD_NORMALIZER,
     REWARD_FORGOT_PEOPLE,
     Person,
-    REWARD_JOINING_ELEVATOR
+    REWARD_JOINING_ELEVATOR,
+    SIMULATION_END_ARRIVAL_TIME
 )
 
 
@@ -99,10 +100,8 @@ class ElevatorSimulator:
         # loss parameters
         self.total_reward: float = 0
         self.recent_reward: float = 0
-
-        # parameters for info return
-        self.num_people_used_stairs: int = 0
-
+        
+        self.num_steps = 0
 
 
     def get_floor_buttons_pressed_up(self):
@@ -150,6 +149,11 @@ class ElevatorSimulator:
         self.arrivals = self.original_arrivals.copy()
         heapq.heapify(self.arrivals)
 
+        # set final end value of simulation as X minutes after the last arrival
+        self.end_simulation_time = self.original_arrivals[-1].original_arrival_time + SIMULATION_END_ARRIVAL_TIME
+
+        
+
     def init_simulation(self, density):
         """Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
 
@@ -192,23 +196,29 @@ class ElevatorSimulator:
 
         # a dictionary for info, should be used to pass information about the run from
         # then env to an algorithm for logging
-        info_dictionary = { "needs_decision": needs_decision,
-                            "num_walked_stairs": self.num_people_used_stairs,
+        info_dictionary = { "num_elevators":self.num_elevators,
+                            "needs_decision": needs_decision,
                             "total_reward": self.total_reward,
                             "recent_reward": reward,
                             "num_people_arrived": self.total_num_arrivals,
                             "num_people_left_in_sim": self.get_number_of_people_in_sim(),
                             "num_people_yet_to_arrive": len(self.arrivals),
-                            "total_arrivals": len(self.original_arrivals)}
+                            "total_arrivals": len(self.original_arrivals),
+                            "num_steps":self.num_steps}
         
         # if done then add some special info for info_dictionary
         if self.done:
             average_arrival_time = 0
+            num_arrived_people = 0
             for person in self.original_arrivals:
-                assert person.time_left_simulation is not None
-                average_arrival_time += person.time_left_simulation - person.arrival_time
-                
-            info_dictionary['average_arrival_time'] = average_arrival_time / len(self.original_arrivals)
+                if person.time_arrived is not None:
+                    average_arrival_time += person.time_arrived - person.arrival_time
+                    num_arrived_people += 1
+
+            if(num_arrived_people == 0):
+                info_dictionary['average_arrival_time'] = INFTY
+            else:
+                info_dictionary['average_arrival_time'] = average_arrival_time / num_arrived_people
 
         time_dictionary = {
             "time_seconds": np.array([self.world_time], dtype=np.float32),
@@ -229,6 +239,7 @@ class ElevatorSimulator:
         """Resets the simulation by bringing simulation back into starting state"""
         # TODO
         self.last_observation_call = 0
+        self.num_steps = 0
         self.done = False
         obs, _, _, _, info = self.get_observations()
         return obs, info
@@ -261,19 +272,6 @@ class ElevatorSimulator:
             self.total_num_arrivals += len(left_passengers)
             for passenger in left_passengers:
                 self.add_reward(passenger.get_arrive_reward(self.world_time))
-
-
-
-
-            # check if people have left floor because wait time too long
-            left_queue_up = self.update_wait_queues(self.floor_queue_list_up[arrived_floor])
-            left_queue_down = self.update_wait_queues(self.floor_queue_list_down[arrived_floor])
-            
-            # keep track of people that used stairs
-            for passenger in left_queue_down + left_queue_up:
-                self.add_reward(passenger.get_walk_reward(self.world_time))
-            self.num_people_used_stairs += len(left_queue_down) + len(left_queue_up)
-
 
             target_queue_floor = None
             if next_elevator.get_next_movement() == 1:
@@ -317,7 +315,7 @@ class ElevatorSimulator:
                         person.arrival_time = new_arrival_time
                         
                         # person cannot have already arrived
-                        assert person.time_left_simulation is None
+                        assert person.time_arrived is None
                         # every person that is waiting must have already arrived
                         assert person not in self.arrivals
                         heapq.heappush(self.arrivals, person)
@@ -339,10 +337,14 @@ class ElevatorSimulator:
 
 
     def step(self, actions, max_step_size=None) -> tuple:
+        self.num_steps += 1
         # if action is defined => execute the actions by sending them to the elevators
         # print a warning from the warning library if max_step_size is higher than the default
         if actions is not None:
-            assert len(actions) == self.num_elevators
+            # if more actions provided than needed, ignore the remaining actions
+            if len(actions) > self.num_elevators:
+                actions = actions[:self.num_elevators]
+    
             for i, elevator in enumerate(self.elevators):
                 elevator_decision = actions[i]
                 elevator.set_target_position(
@@ -364,11 +366,17 @@ class ElevatorSimulator:
         next_elevator, next_elevator_time = min(elevator_arrival_times, key=lambda x: x[1])
 
         # check if we should exit the simulation
+        if self.world_time > self.end_simulation_time:
+            if self.get_number_of_people_in_sim() != 0:
+                self.add_reward(REWARD_FORGOT_PEOPLE)
+            self.done = True
+            return self.get_observations()
         if next_arrival == INFTY and self.get_number_of_people_in_sim() == 0:
             self.done = True
             return self.get_observations()
-        elif next_arrival == INFTY and next_elevator == INFTY:
+        elif next_arrival == INFTY and next_elevator_time == INFTY:
             # if both arrivals and next_elevator are infty but people are still in the simulation, penalize algorithm
+            # can happen if all elevators are at their goal and no people arrive to change anything, for a new action call
             self.add_reward(REWARD_FORGOT_PEOPLE)
             self.done = True
             return self.get_observations()
@@ -388,8 +396,6 @@ class ElevatorSimulator:
             for elevator in self.elevators:
                 elevator.advance_simulation(step_size)
             self.world_time = next_arrival
-            if(len(self.arrivals) == 0):
-                print("ERROR")
             self._handle_people_arriving_at_floor()
 
         # next event is an elevator arrival
@@ -404,15 +410,6 @@ class ElevatorSimulator:
         return self.get_observations()
 
     
-    def update_wait_queues(self, floor_queue: list[Person]) -> list[Person]:
-        """
-        Removes people from the wait list if they have waited too long. Returns list of removed people
-        """
-        
-        still_waitingq_ueue = [person for person in floor_queue if not person.used_stairs(self.world_time)]
-        left_queue =  [person for person in floor_queue if person.used_stairs(self.world_time)]
-        floor_queue[:] = still_waitingq_ueue
-        return left_queue
                 
     def _handle_people_arriving_at_floor(self):
         # it has to handle when several people arrive at the same time

@@ -1,13 +1,12 @@
-
 #!/usr/bin/zsh
 #SBATCH --mem-per-cpu=2048M
-#SBATCH --job-name=elevator_3
+#SBATCH --job-name=alpha_
 
-#SBATCH --output=/work/wx350715/elevator_output/elevator_elevator_3.err
-#SBATCH --error=/work/wx350715/elevator_output/elevator_elevator_3.err
+#SBATCH --output=/work/wx350715/elevator_output/2023-12-21/08-12-38/out.out
+#SBATCH --error=/work/wx350715/elevator_output/2023-12-21/08-12-38/err.err
 
 
-#SBATCH --time=7:00:00
+#SBATCH --time=2:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=1
 
@@ -20,5 +19,4 @@ conda activate elevator
 
 
 cd /home/wx350715/projects/ML-Elevator-Management/elevator_management
-python -m rl.training
-
+python -m rl.training --model alpha  --time_date 2023-12-21  --time_hours 08-12-38  --message 'alpha;K_epochs:100,density:1,eps_clip:0.2,gamma:0.95,hours:2,lr_actor:0.003,lr_critic:0.01,max_training_steps:3000000,num_arrivals:1000,num_elevator_max:2,num_elevator_min:1,num_floors:7,seed:2,update_timestep:2000' --max_training_timesteps 3000000 --update_timestep 2000 --K_epochs 100 --eps_clip 0.2 --gamma 0.95 --lr_actor 0.003 --lr_critic 0.01 --random_seed 2 --num_arrivals 1000 --num_elevators_min 1 --num_elevators_max 2 --num_floors 7 --density 1

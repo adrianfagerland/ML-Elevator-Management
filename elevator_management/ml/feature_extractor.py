@@ -87,7 +87,7 @@ class ObservationFeatureExtractor:
         else:
             return observation.flatten()
 
-    def extract(self, observations) -> th.Tensor:
+    def extract(self, observations, return_tensor: bool = True) -> th.Tensor | np.ndarray:
 
         out_tensor = np.zeros((self.data_out_length), dtype=np.float32)
         # Fill beginning with number of ones that correspond to the number of active elevators
@@ -116,7 +116,10 @@ class ObservationFeatureExtractor:
                 value = self.flatten_rescale(elevator_data[key], feature_space[key])
                 out_tensor[last_idx : last_idx + value_size] = value
                 last_idx = last_idx + value_size
-        return th.Tensor(out_tensor)
+
+        if(return_tensor):
+            return th.Tensor(out_tensor)
+        return out_tensor
 
 
 class ActionFeatureExtractor:

@@ -30,15 +30,15 @@ class ElevatorEnvironment(gym.Env):
                 num_elevators + 1,
             )
         else:
-            assert type(num_elevators) == tuple[int, int]
-            self.num_elevators_range: tuple[int, int] = num_elevators
+            lower_bound_elevators, upper_bound_elevators = num_elevators # type: ignore
+            self.num_elevators_range: tuple[int, int] = (lower_bound_elevators, upper_bound_elevators + 1)
 
         self.num_floors = num_floors
 
         # Defines how the observation space and action space should be treated
-        assert observation_type in ['dict', 'discrete']
+        assert observation_type in ['dict', 'array']
         self.observation_type = observation_type
-        assert action_type in ['dict', 'discrete']
+        assert action_type in ['dict', 'array']
         self.action_type = action_type
         
         # Parameters that do not change troughout episodes
@@ -139,7 +139,7 @@ class ElevatorEnvironment(gym.Env):
             )
         if(self.observation_type == 'dict'):
             self.observation_space = observation_space_dict
-        elif(self.observation_type == 'discrete'):
+        elif(self.observation_type == 'array'):
             self.observation_feature_extr = ObservationFeatureExtractor(observation_space=observation_space_dict, 
                                                               num_floors=self.num_floors,
                                                               max_elevators=self.num_elevators_range[1] - 1)
@@ -155,7 +155,7 @@ class ElevatorEnvironment(gym.Env):
 
         if(self.action_type == 'dict'):
             self.action_space = action_space_dict
-        elif(self.action_type == 'discrete'):
+        elif(self.action_type == 'array'):
             self.action_feature_extractor = ActionFeatureExtractor(action_space_dict, 
                                                                    num_floors=self.num_floors, 
                                                                    max_elevators=self.num_elevators_range[1]-1)
@@ -199,7 +199,7 @@ class ElevatorEnvironment(gym.Env):
         return self.pass_converted_output(self.simulator.step(action_dict, **kwargs))
 
     def pass_converted_output(self, input):
-        """ If the output of simulation needs to be converted from dict to discrete.
+        """ If the output of simulation needs to be converted from dict to array.
             Works as long as the observation is the first entry of input
         """
         if(self.observation_type == 'dict'):
@@ -210,7 +210,7 @@ class ElevatorEnvironment(gym.Env):
         *rest, info = rest_info
         
         # modify observation
-        extracted_obs = self.observation_feature_extr.extract(observation)
+        extracted_obs = self.observation_feature_extr.extract(observation, return_tensor=False)
         
         info['max_elevators'] = self.observation_feature_extr.max_num_elevators
         info['group_info_len'] = self.observation_feature_extr.group_data_length
