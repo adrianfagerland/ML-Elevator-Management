@@ -65,7 +65,6 @@ class ElevatorEnvironment(gym.Env):
         self.simulator: ElevatorSimulator = ElevatorSimulator(
             num_elevators=self.episode_num_elevators,
             num_floors=self.episode_num_floors,
-            random_seed=0,
             speed_elevator=self.max_speed,
             acceleration_elevator=self.max_acceleration,
             max_elevator_occupancy=self.max_occupancy,
