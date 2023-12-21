@@ -1,6 +1,5 @@
 import datetime
 import heapq
-from collections import defaultdict
 from random import Random
 
 import numpy as np
@@ -108,14 +107,20 @@ class ElevatorSimulator:
     def get_floor_buttons_pressed_down(self):
         return [0 if not floor_queue else 1 for floor_queue in self.floor_queue_list_down]
 
-    def generate_arrivals_data(self, density=1):
+    def generate_arrivals_data(
+        self,
+        seed,
+        density=1,
+    ):
         """Generates arrival data for people. Stores the arrivals in self.arrivals.
 
         Args:
             path (str): path to the csv file
         """
 
-        all_arrivals = list(generate_arrivals(self.num_floors, self.num_elevators, density, self.num_arrivals))
+        all_arrivals = list(
+            generate_arrivals(self.num_floors, self.num_elevators, density, self.num_arrivals, seed=seed)
+        )
 
         # Check that all specified floors are valid in this building
         assert (
@@ -147,13 +152,13 @@ class ElevatorSimulator:
         self.arrivals = self.original_arrivals.copy()
         heapq.heapify(self.arrivals)
 
-    def init_simulation(self, density):
+    def init_simulation(self, seed, density):
         """Parameters should be the running time and how many people, i.e. all the information that the arrival generation needs. Also an instance of the control algorithm class.
 
         Args:
             path (str): path to the csv file containing the arrival data with the specified format.
         """
-        self.generate_arrivals_data(density)
+        self.generate_arrivals_data(seed, density)
 
         # start clock for simulation
         self.world_time = 0

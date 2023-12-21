@@ -1,10 +1,10 @@
 import gymnasium as gym
 import numpy as np
 from elsim.elevator_simulator import ElevatorSimulator
-from ml.feature_extractor import ObservationFeatureExtractor, ActionFeatureExtractor
 
 # TODO adjust system enviroment to work with elevator_simulator
 from gymnasium import spaces
+from ml.feature_extractor import ActionFeatureExtractor, ObservationFeatureExtractor
 
 
 class ElevatorEnvironment(gym.Env):
@@ -73,7 +73,7 @@ class ElevatorEnvironment(gym.Env):
         )
 
         # generate the arrival data or read in trough path, TODO: needs to be changed
-        self.simulator.init_simulation(options["density"])
+        self.simulator.init_simulation(seed, options["density"])
         # Define observation space
         observation_space_dict = spaces.Dict(
             {
