@@ -65,10 +65,10 @@ class PyGameVisualizer(Visualizer):
                 continue
             if (
                 observations["elevators"][e.number]["doors_state"] == 0
-                and previous_action["target"][e.number] != observations["elevators"][e.number]["position"]
+                and previous_action[e.number]["target"] != observations["elevators"][e.number]["position"]
             ):
                 font = pygame.font.Font("freesansbold.ttf", 12)
-                t = int(previous_action["target"][e.number])
+                t = int(previous_action[e.number]["target"])
                 text = font.render(str(t), True, LIGHT)
                 self.window.blit(
                     text,
