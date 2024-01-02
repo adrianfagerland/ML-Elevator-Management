@@ -53,8 +53,8 @@ def _compare_elevator_state_from_observation(
 
 
 def test_get_number_of_people_in_sim_few():
-    simulator = ElevatorSimulator(num_floors=4, num_elevators=1, num_arrivals=3, random_seed=3012)
-    simulator.init_simulation(density=1)
+    simulator = ElevatorSimulator(num_floors=4, num_elevators=1, num_arrivals=3)
+    simulator.init_simulation(density=1, seed=42)
     simulator.step(None)
     assert simulator.get_number_of_people_in_sim() == 1
     simulator.step(None)
@@ -66,16 +66,16 @@ def test_get_number_of_people_in_sim_few():
 
 
 def test_get_number_of_people_in_sim_many():
-    simulator = ElevatorSimulator(num_floors=100, num_elevators=10, num_arrivals=3, random_seed=3012)
-    simulator.init_simulation(density=1)
+    simulator = ElevatorSimulator(num_floors=100, num_elevators=10, num_arrivals=3)
+    simulator.init_simulation(density=1, seed=42)
     # they all arrive at the same time
     simulator.step(None)
     assert simulator.get_number_of_people_in_sim() == 3
 
 
 def test_step_no_actions():
-    simulator = ElevatorSimulator(num_floors=100, num_elevators=10, num_arrivals=3, random_seed=3012)
-    simulator.init_simulation(density=1)
+    simulator = ElevatorSimulator(num_floors=100, num_elevators=10, num_arrivals=3)
+    simulator.init_simulation(density=1, seed=42)
     observation1 = simulator.get_observations()
     simulator.step(None)
     observation2 = simulator.get_observations()
@@ -94,8 +94,8 @@ def test_step_no_actions():
 
 
 def test_step_with_actions():
-    simulator = ElevatorSimulator(num_floors=30, num_elevators=2, num_arrivals=3, random_seed=3012)
-    simulator.init_simulation(density=1)
+    simulator = ElevatorSimulator(num_floors=30, num_elevators=2, num_arrivals=3)
+    simulator.init_simulation(density=1, seed=42)
     observation1 = simulator.get_observations()
     targets = np.array([e["position"] for e in observation1[0]["elevators"]])
     targets[0] = 1
@@ -129,18 +129,18 @@ def test_step_with_actions():
 
 
 def test_deep_situation_action1():
-    simulator = ElevatorSimulator(num_floors=10, num_elevators=3, num_arrivals=3, random_seed=2002)
-    simulator.init_simulation(density=1)
-    simulator.step(None)
-    observation1 = simulator.get_observations()
+    simulator = ElevatorSimulator(num_floors=10, num_elevators=3, num_arrivals=3)
+    simulator.init_simulation(density=1, seed=2002)
+    simulator.generate_arrivals_data(seed=42)
+    observation1 = simulator.step(None)
     # assert that the elevator state is at is. quite important for the rest of the test
     correct_observation1 = (
         {
             "floors": np.array(list(zip([0] * 10, [0] * 9 + [1])), dtype=np.int8),
             "num_elevators": np.array([3], dtype=np.uint8),
             "time": {
-                "time_seconds": np.array([10.0], dtype=np.float32),
-                "time_since_last_seconds": np.array([0.0], dtype=np.float32),
+                "time_seconds": np.array([2.0], dtype=np.float32),
+                "time_since_last_seconds": np.array([2.0], dtype=np.float32),
             },
             "elevators": tuple(
                 [

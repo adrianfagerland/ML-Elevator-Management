@@ -1,6 +1,5 @@
 import time
 
-import numpy as np
 from ml.api import ElevatorEnvironment
 from ml.scheduler import Scheduler
 from vis.console import ConsoleVisualizer
@@ -71,8 +70,6 @@ class Runner:
                 self.visualizer.visualize(self.observations, previous_action=previous_action)
                 time.sleep(max(step_size - time_since_last_print, 0))
                 time_last_print = time.time()
-
-        return self.error
 
     def update_from_observations(self, obs, info_dict, reward=0, done=False, trunc=False):
         # store data for next run
